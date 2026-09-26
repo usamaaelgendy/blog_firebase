@@ -80,3 +80,6 @@ app.*.map.json
 **/ios/Runner/GeneratedPluginRegistrant.*
 
 .mcp.json
+
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist

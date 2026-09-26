@@ -150,3 +150,10 @@ class _BlogHomePageState extends State<BlogHomePage> {
     );
   }
 }
+
+// node --version
+// npm --version
+// firebase --version
+// flutterfire --version
+
+
