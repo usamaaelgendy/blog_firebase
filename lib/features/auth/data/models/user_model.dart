@@ -1,5 +1,6 @@
 import 'package:blog_app/features/auth/domain/entities/user_entity.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb;
 
 class UserModel extends UserEntity {
   const UserModel({
@@ -21,6 +22,18 @@ class UserModel extends UserEntity {
       displayName: user.userMetadata?['name'],
       phoneNumber: user.phone,
       photoUrl: user.userMetadata?['avatar_url'] ?? user.userMetadata?['photo'],
+    );
+  }
+
+  factory UserModel.fromFirebaseUser(fb.User user) {
+    return UserModel(
+      id: user.uid,
+      email: user.email ?? '',
+      isEmailVerified: user.emailVerified,
+      createdAt: user.metadata.creationTime ?? DateTime.now(),
+      displayName: user.displayName,
+      phoneNumber: user.phoneNumber,
+      photoUrl: user.photoURL,
     );
   }
 
