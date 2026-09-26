@@ -1,4 +1,4 @@
-package com.elgendy.auth_flow_app
+package com.elgendy.blogfirebase
 
 import io.flutter.embedding.android.FlutterActivity
 
