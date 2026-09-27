@@ -1,4 +1,4 @@
-import 'package:blog_app/core/network/supabase/auth_client.dart';
+import 'package:blog_app/core/network/auth_client.dart';
 import 'package:blog_app/core/network/supabase/auth_client_impl.dart';
 import 'package:blog_app/core/network/supabase/database_client.dart';
 import 'package:blog_app/core/network/supabase/database_client_impl.dart';
@@ -54,7 +54,7 @@ final sl = GetIt.instance;
 Future<void> initDependencies() async {
   // ===== Core =====
   sl.registerLazySingleton<AuthClient>(
-    () => AuthClientImpl(Supabase.instance.client.auth, Supabase.instance.client.functions),
+    () => SupabaseAuthClient(Supabase.instance.client.auth, Supabase.instance.client.functions),
   );
   sl.registerLazySingleton<StorageClient>(() => StorageClientImpl(Supabase.instance.client));
   sl.registerLazySingleton<DatabaseClient>(() => DatabaseClientImpl(Supabase.instance.client));

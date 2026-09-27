@@ -1,9 +1,8 @@
 import 'package:blog_app/core/error/exceptions.dart';
-import 'package:blog_app/core/network/supabase/auth_client.dart';
+import 'package:blog_app/core/network/auth_client.dart';
 import 'package:blog_app/features/auth/data/datasources/social_auth_datasource.dart';
 import 'package:blog_app/features/auth/data/models/user_model.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' hide AuthException;
 
 class SocialAuthDataSourceImpl implements SocialAuthDataSource {
   final AuthClient _authClient;
@@ -33,16 +32,7 @@ class SocialAuthDataSourceImpl implements SocialAuthDataSource {
         throw ServerException('Failed to get Google ID token');
       }
 
-      final authResponse = await _authClient.signInWithIdToken(
-        OAuthProvider.google,
-        idToken,
-      );
-
-      if (authResponse.user == null) {
-        throw AuthException('Failed to sign in with Google');
-      }
-
-      return UserModel.fromSupabaseUser(authResponse.user!);
+      return await _authClient.signInWithIdToken(SocialProvider.google, idToken);
     } on AuthException {
       rethrow;
     } catch (e) {
@@ -65,7 +55,7 @@ class SocialAuthDataSourceImpl implements SocialAuthDataSource {
   Future<void> signInWithGitHub() async {
     try {
       await _authClient.signInWithOAuth(
-        OAuthProvider.github,
+        SocialProvider.github,
         'com.elgendy.authflowapp://login-callback',
       );
     } on AuthException {

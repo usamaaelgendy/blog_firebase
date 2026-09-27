@@ -1,5 +1,5 @@
 import 'package:blog_app/core/error/exceptions.dart';
-import 'package:blog_app/core/network/supabase/auth_client.dart';
+import 'package:blog_app/core/network/auth_client.dart';
 import 'package:blog_app/features/auth/data/datasources/phone_auth_datasource.dart';
 import 'package:blog_app/features/auth/data/models/user_model.dart';
 
@@ -22,9 +22,7 @@ class PhoneAuthDataSourceImpl implements PhoneAuthDataSource {
   @override
   Future<UserModel> verifyOTP({required String phoneNumber, required String otpCode}) async {
     try {
-      final response = await _authClient.verifyOtp(phoneNumber: phoneNumber, otp: otpCode);
-      if (response.user == null) throw AuthException('OTP verification failed');
-      return UserModel.fromSupabaseUser(response.user!);
+      return await _authClient.verifyOtp(phoneNumber: phoneNumber, otp: otpCode);
     } on AuthException {
       rethrow;
     } catch (e) {

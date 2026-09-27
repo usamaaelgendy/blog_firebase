@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:blog_app/core/error/exceptions.dart';
-import 'package:blog_app/core/network/supabase/auth_client.dart';
+import 'package:blog_app/core/network/auth_client.dart';
 import 'package:blog_app/core/network/supabase/storage_client.dart';
 import 'package:blog_app/features/auth/data/datasources/profile_datasource.dart';
 import 'package:blog_app/features/auth/data/models/user_model.dart';
@@ -15,9 +15,7 @@ class ProfileDataSourceImpl implements ProfileDataSource {
   @override
   Future<UserModel> updateProfile({String? name, String? avatarUrl}) async {
     try {
-      final response = await _authClient.updateUser(name: name, avatarUrl: avatarUrl);
-      if (response.user == null) throw ServerException('Failed to update profile');
-      return UserModel.fromSupabaseUser(response.user!);
+      return await _authClient.updateUser(name: name, avatarUrl: avatarUrl);
     } on AuthException {
       rethrow;
     } catch (e) {
