@@ -79,11 +79,12 @@ class _ForgetPasswordViewState extends State<ForgetPasswordView> {
               });
             }
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
+              const SnackBar(
+                content: Text('Check your email for the password reset link'),
                 backgroundColor: Colors.green,
               ),
             );
+            Navigator.of(context).pop();
           } else if (state is PasswordResetOtpVerify) {
             setState(() {
               _currentStep = ForgetPasswordStep.newPassword;
