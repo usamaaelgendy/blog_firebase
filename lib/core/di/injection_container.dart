@@ -1,4 +1,5 @@
 import 'package:blog_app/core/network/auth_client.dart';
+import 'package:blog_app/core/network/firebase/auth_client_impl.dart';
 import 'package:blog_app/core/network/supabase/auth_client_impl.dart';
 import 'package:blog_app/core/network/supabase/database_client.dart';
 import 'package:blog_app/core/network/supabase/database_client_impl.dart';
@@ -46,6 +47,7 @@ import 'package:blog_app/features/blog/domain/repositories/post_query_repository
 import 'package:blog_app/features/blog/presentation/bloc/comment/comment_bloc.dart';
 import 'package:blog_app/features/blog/presentation/bloc/post_crud/post_crud_bloc.dart';
 import 'package:blog_app/features/blog/presentation/bloc/post_query/post_query_bloc.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get_it/get_it.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -54,7 +56,7 @@ final sl = GetIt.instance;
 Future<void> initDependencies() async {
   // ===== Core =====
   sl.registerLazySingleton<AuthClient>(
-    () => SupabaseAuthClient(Supabase.instance.client.auth, Supabase.instance.client.functions),
+    () => FirebaseAuthClient(FirebaseAuth.instance),
   );
   sl.registerLazySingleton<StorageClient>(() => StorageClientImpl(Supabase.instance.client));
   sl.registerLazySingleton<DatabaseClient>(() => DatabaseClientImpl(Supabase.instance.client));
