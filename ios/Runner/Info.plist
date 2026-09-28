@@ -45,7 +45,7 @@
         <key>CFBundleVersion</key>
         <string>$(FLUTTER_BUILD_NUMBER)</string>
         <key>GIDClientID</key>
-        <string>227132170531-lh279bqkiteephe0lj7es0n02ve6g79l.apps.googleusercontent.com</string>
+        	<string>687633959068-c53tq4t1nfaped5ue19t1ibh00o305kb.apps.googleusercontent.com</string>
         <key>LSRequiresIPhoneOS</key>
         <true />
         <key>UIApplicationSceneManifest</key>
@@ -88,5 +88,7 @@
             <string>UIInterfaceOrientationLandscapeLeft</string>
             <string>UIInterfaceOrientationLandscapeRight</string>
         </array>
+        <key>FlutterDeepLinkingEnabled</key>
+        <false/>
     </dict>
 </plist>

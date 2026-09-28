@@ -148,6 +148,12 @@ class _LoginViewState extends State<LoginView> {
                         icon: const Icon(Icons.code, size: 24),
                         label: const Text('Continue with GitHub'),
                       ),
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        onPressed: () => Navigator.of(context).pushNamed('/phone-auth'),
+                        icon: const Icon(Icons.phone, size: 24),
+                        label: const Text('Continue with Phone'),
+                      ),
                       const SizedBox(height: 24),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
