@@ -14,7 +14,10 @@ class ProfilePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(create: (context) => sl<ProfileBloc>(), child: const ProfileView());
+    return BlocProvider(
+      create: (context) => sl<ProfileBloc>(),
+      child: const ProfileView(),
+    );
   }
 }
 
@@ -28,18 +31,34 @@ class ProfileView extends StatelessWidget {
       body: BlocListener<ProfileBloc, ProfileState>(
         listener: (context, state) {
           if (state is ProfileError) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message), backgroundColor: Colors.red));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: Colors.red,
+              ),
+            );
           } else if (state is ProfileUpdated) {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile updated'), backgroundColor: Colors.green));
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Profile updated'),
+                backgroundColor: Colors.green,
+              ),
+            );
           } else if (state is ProfilePictureUploaded) {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile picture updated'), backgroundColor: Colors.green));
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Profile picture updated'),
+                backgroundColor: Colors.green,
+              ),
+            );
           } else if (state is AccountDeleted) {
             context.read<SessionBloc>().add(const CheckAuthStatusEvent());
           }
         },
         child: BlocBuilder<SessionBloc, SessionState>(
           builder: (context, sessionState) {
-            if (sessionState is! Authenticated) return const Center(child: Text('Not authenticated'));
+            if (sessionState is! Authenticated)
+              return const Center(child: Text('Not authenticated'));
             final user = sessionState.user;
 
             return SingleChildScrollView(
@@ -50,44 +69,90 @@ class ProfileView extends StatelessWidget {
                   GestureDetector(
                     onTap: () async {
                       final picker = ImagePicker();
-                      final image = await picker.pickImage(source: ImageSource.gallery);
+                      final image = await picker.pickImage(
+                        source: ImageSource.gallery,
+                      );
                       if (image != null && context.mounted) {
-                        context.read<ProfileBloc>().add(UploadProfilePictureEvent(filePath: image.path));
+                        context.read<ProfileBloc>().add(
+                          UploadProfilePictureEvent(filePath: image.path),
+                        );
                       }
                     },
                     child: CircleAvatar(
                       radius: 60,
-                      backgroundImage: user.photoUrl != null ? NetworkImage(user.photoUrl!) : null,
-                      child: user.photoUrl == null ? const Icon(Icons.camera_alt, size: 40) : null,
+                      backgroundImage: user.photoUrl != null
+                          ? NetworkImage(user.photoUrl!)
+                          : null,
+                      child: user.photoUrl == null
+                          ? const Icon(Icons.camera_alt, size: 40)
+                          : null,
                     ),
                   ),
                   const SizedBox(height: 24),
-                  Text(user.displayName ?? 'User', style: Theme.of(context).textTheme.headlineSmall),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        user.displayName ?? 'User',
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                      IconButton(
+                        onPressed: () =>
+                            _onEditNamePressed(context, user.displayName),
+                        icon: const Icon(Icons.edit, size: 20),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 8),
-                  Text(user.email, style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey)),
+                  Text(
+                    user.email,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyLarge?.copyWith(color: Colors.grey),
+                  ),
                   const SizedBox(height: 32),
                   ListTile(
                     leading: const Icon(Icons.logout, color: Colors.red),
-                    title: const Text('Sign Out', style: TextStyle(color: Colors.red)),
-                    onTap: () => context.read<SessionBloc>().add(const SignOutEvent()),
+                    title: const Text(
+                      'Sign Out',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                    onTap: () =>
+                        context.read<SessionBloc>().add(const SignOutEvent()),
                   ),
                   ListTile(
-                    leading: const Icon(Icons.delete_forever, color: Colors.red),
-                    title: const Text('Delete Account', style: TextStyle(color: Colors.red)),
+                    leading: const Icon(
+                      Icons.delete_forever,
+                      color: Colors.red,
+                    ),
+                    title: const Text(
+                      'Delete Account',
+                      style: TextStyle(color: Colors.red),
+                    ),
                     onTap: () {
                       showDialog(
                         context: context,
                         builder: (ctx) => AlertDialog(
                           title: const Text('Delete Account'),
-                          content: const Text('Are you sure? This action cannot be undone.'),
+                          content: const Text(
+                            'Are you sure? This action cannot be undone.',
+                          ),
                           actions: [
-                            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              child: const Text('Cancel'),
+                            ),
                             TextButton(
                               onPressed: () {
                                 Navigator.pop(ctx);
-                                context.read<ProfileBloc>().add(const DeleteAccountEvent());
+                                context.read<ProfileBloc>().add(
+                                  const DeleteAccountEvent(),
+                                );
                               },
-                              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                              child: const Text(
+                                'Delete',
+                                style: TextStyle(color: Colors.red),
+                              ),
                             ),
                           ],
                         ),
@@ -101,5 +166,33 @@ class ProfileView extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  _onEditNamePressed(BuildContext context, String? displayName) async {
+    final profileBloc = context.read<ProfileBloc>();
+    final controller = TextEditingController(text: displayName);
+
+    final String? name = await showDialog<String>(
+      context: context,
+      builder: (BuildContext ctx) {
+        return AlertDialog(
+          title: const Text('Edit Name'),
+          content: TextField(controller: controller, autofocus: true),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+    if (name != null && name.isNotEmpty) {
+      profileBloc.add(UpdateProfileEvent(name: name));
+    }
   }
 }

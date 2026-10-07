@@ -135,7 +135,7 @@ class FirebaseAuthClient implements AuthClient {
 
   @override
   Stream<UserModel?> get onAuthStateChange =>
-      _firebaseAuth.authStateChanges().map((user) => user == null ? null : UserModel.fromFirebaseUser(user));
+      _firebaseAuth.userChanges().map((user) => user == null ? null : UserModel.fromFirebaseUser(user));
 
   @override
   Future<UserModel> updateUser({String? name, String? avatarUrl}) {
