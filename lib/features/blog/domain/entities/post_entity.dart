@@ -29,3 +29,23 @@ class PostEntity extends Equatable {
   @override
   List<Object?> get props => [id, title, content, imageUrl, authorId, author, category, viewCount, createdAt, updatedAt];
 }
+
+
+//posts - Collection
+// └── {postId} -> Document Id
+//     ├── title: "Firestore in 7 minutes"
+//     ├── content: "..."
+//     ├── image_url: null
+//     ├── category: "flutter"
+//     ├── view_count: 0
+//     ├── author_id: "<uid>"
+//     ├── author: { name: "Usama", avatar_url: null }   ← نسخة من بيانات الكاتب
+//     ├── created_at: timestamp
+//     ├── updated_at: timestamp
+//     └── comments
+//         └── {commentId}
+//             ├── content: "Great post"
+//             ├── post_id: "<postId>"
+//             ├── author_id: "<uid>"
+//             ├── author: { name: "Usama", avatar_url: null }
+//             └── created_at: timestamp
