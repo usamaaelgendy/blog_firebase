@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:blog_app/core/constants/db_collections.dart';
 import 'package:blog_app/core/error/exceptions.dart';
 import 'package:blog_app/core/network/supabase/database_client.dart';
 import 'package:blog_app/core/network/supabase/storage_client.dart';
@@ -21,7 +22,7 @@ class PostCrudDataSourceImpl implements PostCrudDataSource {
     String? category,
   }) async {
     try {
-      final response = await _databaseClient.insert('posts', {
+      final response = await _databaseClient.insert(DBCollection.posts, {
         'title': title,
         'content': content,
         'author_id': authorId,
@@ -42,7 +43,11 @@ class PostCrudDataSourceImpl implements PostCrudDataSource {
   @override
   Future<PostModel> getPostById(String id) async {
     try {
-      final response = await _databaseClient.selectById('posts', id, columns: '*, auther:profiles!author_id(*)');
+      final response = await _databaseClient.selectById(
+        DBCollection.posts,
+        id,
+        columns: '*, auther:profiles!author_id(*)',
+      );
 
       return PostModel.fromJson(response);
     } on ServerException {
@@ -69,7 +74,7 @@ class PostCrudDataSourceImpl implements PostCrudDataSource {
         'category': category,
       }..removeWhere((key, value) => value == null);
 
-      await _databaseClient.update('posts', id, data);
+      await _databaseClient.update(DBCollection.posts, id, data);
 
       return await getPostById(id);
     } on ServerException {
@@ -82,7 +87,7 @@ class PostCrudDataSourceImpl implements PostCrudDataSource {
   @override
   Future<void> deletePost(String id) async {
     try {
-      await _databaseClient.delete('posts', id);
+      await _databaseClient.delete(DBCollection.posts, id);
     } on ServerException {
       rethrow;
     } catch (e) {

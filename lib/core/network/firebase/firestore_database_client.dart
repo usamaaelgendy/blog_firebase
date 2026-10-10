@@ -1,3 +1,4 @@
+import 'package:blog_app/core/constants/db_collections.dart';
 import 'package:blog_app/core/error/exceptions.dart';
 import 'package:blog_app/core/network/auth_client.dart';
 import 'package:blog_app/core/network/supabase/database_client.dart';
@@ -6,7 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 /// Firestore implementation of [DatabaseClient].
 ///
 /// Keeps the Supabase-shaped contract so the datasources stay unchanged:
-/// - `comments` live in the `posts/{postId}/comments` subcollection.
+/// - Subcollections (e.g. `posts/{postId}/comments`) are described in [_subCollections].
 /// - `author` is a copy of the current user stored inside each document,
 ///   so the `columns` joins (`author:profiles!author_id(*)`) are not needed and are ignored.
 /// - Timestamps are returned as ISO strings because the models use `DateTime.parse`.
@@ -14,8 +15,11 @@ class FirestoreDatabaseClient implements DatabaseClient {
   final FirebaseFirestore _firestore;
   final AuthClient _authClient;
 
-  static const _posts = 'posts';
-  static const _comments = 'comments';
+  /// Subcollections: `collection -> (parent collection, field in the data that holds the parent id)`.
+  /// e.g. `comments` live in `posts/{post_id}/comments`.
+  static const _subCollections = <String, ({String parent, String parentIdField})>{
+    DBCollection.comments: (parent: DBCollection.posts, parentIdField: 'post_id'),
+  };
 
   // Return a local estimate for `serverTimestamp()` fields that are still pending.
   static const _getOptions = GetOptions(serverTimestampBehavior: ServerTimestampBehavior.estimate);
@@ -28,7 +32,8 @@ class FirestoreDatabaseClient implements DatabaseClient {
       final user = _authClient.currentUser;
       if (user == null) throw AuthException('User not authenticated');
 
-      final ref = await _collection(table, postId: data['post_id'] as String?).add({
+      final subCollection = _subCollections[table];
+      final ref = await _collection(table, parentId: data[subCollection?.parentIdField] as String?).add({
         ...data,
         'author': {
           'id': user.id,
@@ -36,13 +41,12 @@ class FirestoreDatabaseClient implements DatabaseClient {
           'avatar_url': user.photoUrl,
           'created_at': user.createdAt.toIso8601String(),
         },
-        if (table == _posts) 'view_count': 0,
         'created_at': FieldValue.serverTimestamp(),
         'updated_at': FieldValue.serverTimestamp(),
       });
 
       // Subcollection docs are found by `id` through a collection group query.
-      if (table == _comments) await ref.update({'id': ref.id});
+      if (subCollection != null) await ref.update({'id': ref.id});
 
       return _toMap(await ref.get(_getOptions));
     });
@@ -60,9 +64,9 @@ class FirestoreDatabaseClient implements DatabaseClient {
   }) {
     return _guard(() async {
       final where = Map<String, dynamic>.of(filters ?? {});
-      final postId = table == _comments ? where.remove('post_id') as String? : null;
+      final parentId = where.remove(_subCollections[table]?.parentIdField) as String?;
 
-      Query<Map<String, dynamic>> query = _collection(table, postId: postId);
+      Query<Map<String, dynamic>> query = _collection(table, parentId: parentId);
 
       where.forEach((key, value) {
         query = query.where(key, isEqualTo: value);
@@ -104,18 +108,16 @@ class FirestoreDatabaseClient implements DatabaseClient {
       final ref = await _docRef(table, id);
 
       // Firestore does not delete subcollections with their parent document.
-      if (table == _posts) {
-        final comments = await ref.collection(_comments).get(_getOptions);
-        final batch = _firestore.batch();
-        for (final comment in comments.docs) {
-          batch.delete(comment.reference);
+      final batch = _firestore.batch();
+      for (final MapEntry(key: child, value: subCollection) in _subCollections.entries) {
+        if (subCollection.parent != table) continue;
+        final children = await ref.collection(child).get(_getOptions);
+        for (final doc in children.docs) {
+          batch.delete(doc.reference);
         }
-        batch.delete(ref);
-        await batch.commit();
-        return;
       }
-
-      await ref.delete();
+      batch.delete(ref);
+      await batch.commit();
     });
   }
 
@@ -138,19 +140,20 @@ class FirestoreDatabaseClient implements DatabaseClient {
     });
   }
 
-  CollectionReference<Map<String, dynamic>> _collection(String table, {String? postId}) {
-    if (table == _comments) {
-      if (postId == null) throw ServerException('post_id is required for comments');
-      return _firestore.collection(_posts).doc(postId).collection(_comments);
-    }
-    return _firestore.collection(table);
+  CollectionReference<Map<String, dynamic>> _collection(String table, {String? parentId}) {
+    final subCollection = _subCollections[table];
+    if (subCollection == null) return _firestore.collection(table);
+
+    if (parentId == null) throw ServerException('${subCollection.parentIdField} is required for $table');
+    return _firestore.collection(subCollection.parent).doc(parentId).collection(table);
   }
 
   Future<DocumentReference<Map<String, dynamic>>> _docRef(String table, String id) async {
-    if (table != _comments) return _firestore.collection(table).doc(id);
+    if (!_subCollections.containsKey(table)) return _firestore.collection(table).doc(id);
 
-    final snapshot = await _firestore.collectionGroup(_comments).where('id', isEqualTo: id).limit(1).get(_getOptions);
-    if (snapshot.docs.isEmpty) throw ServerException('Comment not found', 'not-found');
+    // Subcollection docs are found by their `id` field across all parents.
+    final snapshot = await _firestore.collectionGroup(table).where('id', isEqualTo: id).limit(1).get(_getOptions);
+    if (snapshot.docs.isEmpty) throw ServerException('Document not found', 'not-found');
     return snapshot.docs.first.reference;
   }
 

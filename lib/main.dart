@@ -1,3 +1,4 @@
+import 'package:blog_app/core/constants/db_collections.dart';
 import 'package:blog_app/core/di/injection_container.dart';
 import 'package:blog_app/core/network/supabase/supabase_realtime_client.dart';
 import 'package:blog_app/core/theme/app_theme.dart';
@@ -38,7 +39,7 @@ void main() async {
 
   realtime.subscribeToTable(
     channelName: 'testing',
-    table: 'posts',
+    table: DBCollection.posts,
     onChnage: (payload) {
       print(payload);
     },

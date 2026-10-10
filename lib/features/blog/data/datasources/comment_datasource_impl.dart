@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:blog_app/core/constants/db_collections.dart';
 import 'package:blog_app/core/error/exceptions.dart';
 import 'package:blog_app/core/network/supabase/database_client.dart';
 import 'package:blog_app/core/network/supabase/supabase_realtime_client.dart';
@@ -20,7 +21,7 @@ class CommentDataSourceImpl implements CommentDataSource {
     required String authorId,
   }) async {
     try {
-      final response = await _databaseClient.insert('comments', {
+      final response = await _databaseClient.insert(DBCollection.comments, {
         'content': content,
         'post_id': postId,
         'author_id': authorId,
@@ -29,7 +30,7 @@ class CommentDataSourceImpl implements CommentDataSource {
       final commentId = response['id'] as String;
 
       final commentWithAuthor = await _databaseClient.selectById(
-        'comments',
+        DBCollection.comments,
         commentId,
         columns: '*, author:profiles!author_id(*)',
       );
@@ -46,7 +47,7 @@ class CommentDataSourceImpl implements CommentDataSource {
   Future<List<CommentModel>> getComments({required String postId}) async {
     try {
       final response = await _databaseClient.select(
-        'comments',
+        DBCollection.comments,
         columns: '*, author:profiles!author_id(*)',
         filters: {'post_id': postId},
         orderBy: 'created_at',
@@ -64,7 +65,7 @@ class CommentDataSourceImpl implements CommentDataSource {
   @override
   Future<void> deleteComment(String id) async {
     try {
-      await _databaseClient.delete('comments', id);
+      await _databaseClient.delete(DBCollection.comments, id);
     } on ServerException {
       rethrow;
     } catch (e) {
@@ -77,7 +78,7 @@ class CommentDataSourceImpl implements CommentDataSource {
     final controller = StreamController<CommentModel>();
     final channel = _realtimeClient.subscribeToTable(
       channelName: 'comments-insert-$postId',
-      table: 'comments',
+      table: DBCollection.comments,
       event: PostgresChangeEvent.insert,
       filterColumn: 'post_id',
       filterValue: postId,
@@ -86,7 +87,7 @@ class CommentDataSourceImpl implements CommentDataSource {
         final commentId = newComment['id'] as String;
 
         final hydrated = await _databaseClient.selectById(
-          'comments',
+          DBCollection.comments,
           commentId,
           columns: '*, author:profiles!author_id(*)',
         );
@@ -108,7 +109,7 @@ class CommentDataSourceImpl implements CommentDataSource {
     final controller = StreamController<String>();
     final channel = _realtimeClient.subscribeToTable(
       channelName: 'comments-delete-$postId',
-      table: 'comments',
+      table: DBCollection.comments,
       event: PostgresChangeEvent.delete,
       filterColumn: 'post_id',
       filterValue: postId,

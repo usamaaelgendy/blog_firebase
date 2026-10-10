@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:blog_app/core/constants/db_collections.dart';
 import 'package:blog_app/core/error/exceptions.dart';
 import 'package:blog_app/core/network/supabase/database_client.dart';
 import 'package:blog_app/core/network/supabase/supabase_realtime_client.dart';
@@ -17,7 +18,7 @@ class PostQueryDataSourceImpl implements PostQueryDataSource {
   Future<List<PostModel>> getPosts({int? rangeFrom, int? rangeTo, String? category}) async {
     try {
       final response = await _databaseClient.select(
-        'posts',
+        DBCollection.posts,
         columns: '*, author:profiles!author_id(*)',
         rangeFrom: rangeFrom,
         rangeTo: rangeTo,
@@ -43,7 +44,7 @@ class PostQueryDataSourceImpl implements PostQueryDataSource {
       }
 
       final response = await _databaseClient.select(
-        'posts',
+        DBCollection.posts,
         columns: '*, author:profiles!author_id(*)',
         orderBy: 'created_at',
         filters: filters,
@@ -62,7 +63,7 @@ class PostQueryDataSourceImpl implements PostQueryDataSource {
   Future<List<PostModel>> searchPosts({required String query}) async {
     try {
       final response = await _databaseClient.search(
-        'posts',
+        DBCollection.posts,
         column: 'title',
         query: query,
         columns: '*, author:profiles!author_id(*)',
@@ -80,13 +81,17 @@ class PostQueryDataSourceImpl implements PostQueryDataSource {
     final controller = StreamController<PostModel>();
     final channel = _realtimeClient.subscribeToTable(
       channelName: 'post-feed',
-      table: 'posts',
+      table: DBCollection.posts,
       event: PostgresChangeEvent.insert,
       onChnage: (payload) async {
         final newPost = payload.newRecord;
         final postId = newPost['id'] as String;
 
-        final hydrated = await _databaseClient.selectById('posts', postId, columns: '*, author:profiles!author_id(*)');
+        final hydrated = await _databaseClient.selectById(
+          DBCollection.posts,
+          postId,
+          columns: '*, author:profiles!author_id(*)',
+        );
 
         controller.add(PostModel.fromJson(hydrated));
       },
