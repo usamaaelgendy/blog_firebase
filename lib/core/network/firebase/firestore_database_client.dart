@@ -45,6 +45,8 @@ class FirestoreDatabaseClient implements DatabaseClient {
         'updated_at': FieldValue.serverTimestamp(),
       });
 
+      print(ref.id);
+
       // Subcollection docs are found by `id` through a collection group query.
       if (subCollection != null) await ref.update({'id': ref.id});
 
@@ -151,6 +153,7 @@ class FirestoreDatabaseClient implements DatabaseClient {
   Future<DocumentReference<Map<String, dynamic>>> _docRef(String table, String id) async {
     if (!_subCollections.containsKey(table)) return _firestore.collection(table).doc(id);
 
+    // posts/{postId}/comments/{commentsId}
     // Subcollection docs are found by their `id` field across all parents.
     final snapshot = await _firestore.collectionGroup(table).where('id', isEqualTo: id).limit(1).get(_getOptions);
     if (snapshot.docs.isEmpty) throw ServerException('Document not found', 'not-found');
