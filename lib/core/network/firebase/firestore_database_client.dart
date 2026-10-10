@@ -1,0 +1,178 @@
+import 'package:blog_app/core/error/exceptions.dart';
+import 'package:blog_app/core/network/auth_client.dart';
+import 'package:blog_app/core/network/supabase/database_client.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+/// Firestore implementation of [DatabaseClient].
+///
+/// Keeps the Supabase-shaped contract so the datasources stay unchanged:
+/// - `comments` live in the `posts/{postId}/comments` subcollection.
+/// - `author` is a copy of the current user stored inside each document,
+///   so the `columns` joins (`author:profiles!author_id(*)`) are not needed and are ignored.
+/// - Timestamps are returned as ISO strings because the models use `DateTime.parse`.
+class FirestoreDatabaseClient implements DatabaseClient {
+  final FirebaseFirestore _firestore;
+  final AuthClient _authClient;
+
+  static const _posts = 'posts';
+  static const _comments = 'comments';
+
+  // Return a local estimate for `serverTimestamp()` fields that are still pending.
+  static const _getOptions = GetOptions(serverTimestampBehavior: ServerTimestampBehavior.estimate);
+
+  FirestoreDatabaseClient(this._firestore, this._authClient);
+
+  @override
+  Future<Map<String, dynamic>> insert(String table, Map<String, dynamic> data) {
+    return _guard(() async {
+      final user = _authClient.currentUser;
+      if (user == null) throw AuthException('User not authenticated');
+
+      final ref = await _collection(table, postId: data['post_id'] as String?).add({
+        ...data,
+        'author': {
+          'id': user.id,
+          'name': user.displayName,
+          'avatar_url': user.photoUrl,
+          'created_at': user.createdAt.toIso8601String(),
+        },
+        if (table == _posts) 'view_count': 0,
+        'created_at': FieldValue.serverTimestamp(),
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+
+      // Subcollection docs are found by `id` through a collection group query.
+      if (table == _comments) await ref.update({'id': ref.id});
+
+      return _toMap(await ref.get(_getOptions));
+    });
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> select(
+    String table, {
+    String columns = '*',
+    Map<String, dynamic>? filters,
+    String? orderBy,
+    bool ascending = false,
+    int? rangeFrom,
+    int? rangeTo,
+  }) {
+    return _guard(() async {
+      final where = Map<String, dynamic>.of(filters ?? {});
+      final postId = table == _comments ? where.remove('post_id') as String? : null;
+
+      Query<Map<String, dynamic>> query = _collection(table, postId: postId);
+
+      where.forEach((key, value) {
+        query = query.where(key, isEqualTo: value);
+      });
+
+      if (orderBy != null) {
+        query = query.orderBy(orderBy, descending: !ascending);
+      }
+
+      // Firestore has no offset, so read up to `rangeTo` and skip the first `rangeFrom` docs.
+      if (rangeFrom != null && rangeTo != null) {
+        query = query.limit(rangeTo + 1);
+      }
+
+      final snapshot = await query.get(_getOptions);
+      final docs = rangeFrom != null && rangeTo != null ? snapshot.docs.skip(rangeFrom) : snapshot.docs;
+
+      return docs.map(_toMap).toList();
+    });
+  }
+
+  @override
+  Future<Map<String, dynamic>> selectById(String table, String id, {String columns = '*'}) {
+    return _guard(() async => _toMap(await (await _docRef(table, id)).get(_getOptions)));
+  }
+
+  @override
+  Future<Map<String, dynamic>> update(String table, String id, Map<String, dynamic> data) {
+    return _guard(() async {
+      final ref = await _docRef(table, id);
+      await ref.update({...data, 'updated_at': FieldValue.serverTimestamp()});
+      return _toMap(await ref.get(_getOptions));
+    });
+  }
+
+  @override
+  Future<void> delete(String table, String id) {
+    return _guard(() async {
+      final ref = await _docRef(table, id);
+
+      // Firestore does not delete subcollections with their parent document.
+      if (table == _posts) {
+        final comments = await ref.collection(_comments).get(_getOptions);
+        final batch = _firestore.batch();
+        for (final comment in comments.docs) {
+          batch.delete(comment.reference);
+        }
+        batch.delete(ref);
+        await batch.commit();
+        return;
+      }
+
+      await ref.delete();
+    });
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> search(
+    String table, {
+    required String column,
+    required String query,
+    String columns = '*',
+  }) {
+    // Firestore has no `ilike`, so filter by "contains" on the client.
+    return _guard(() async {
+      final snapshot = await _collection(table).orderBy('created_at', descending: true).get(_getOptions);
+      final needle = query.toLowerCase();
+
+      return snapshot.docs
+          .map(_toMap)
+          .where((doc) => (doc[column] as String? ?? '').toLowerCase().contains(needle))
+          .toList();
+    });
+  }
+
+  CollectionReference<Map<String, dynamic>> _collection(String table, {String? postId}) {
+    if (table == _comments) {
+      if (postId == null) throw ServerException('post_id is required for comments');
+      return _firestore.collection(_posts).doc(postId).collection(_comments);
+    }
+    return _firestore.collection(table);
+  }
+
+  Future<DocumentReference<Map<String, dynamic>>> _docRef(String table, String id) async {
+    if (table != _comments) return _firestore.collection(table).doc(id);
+
+    final snapshot = await _firestore.collectionGroup(_comments).where('id', isEqualTo: id).limit(1).get(_getOptions);
+    if (snapshot.docs.isEmpty) throw ServerException('Comment not found', 'not-found');
+    return snapshot.docs.first.reference;
+  }
+
+  Map<String, dynamic> _toMap(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data();
+    if (data == null) throw ServerException('Document not found', 'not-found');
+    return {...data.map((key, value) => MapEntry(key, _fromFirestore(value))), 'id': doc.id};
+  }
+
+  dynamic _fromFirestore(dynamic value) {
+    if (value is Timestamp) return value.toDate().toIso8601String();
+    if (value is Map) return value.map((key, v) => MapEntry(key as String, _fromFirestore(v)));
+    if (value is List) return value.map(_fromFirestore).toList();
+    return value;
+  }
+
+  /// Converts Firestore errors into the app's [ServerException].
+  Future<T> _guard<T>(Future<T> Function() action) async {
+    try {
+      return await action();
+    } on FirebaseException catch (e) {
+      throw ServerException(e.message ?? 'Database request failed', e.code);
+    }
+  }
+}
