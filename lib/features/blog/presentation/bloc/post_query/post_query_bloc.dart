@@ -14,6 +14,7 @@ class PostQueryBloc extends Bloc<PostQueryEvent, PostQueryState> {
   String? _currentCategory;
 
   StreamSubscription? _newPost;
+  bool _isLoadingMore = false;
 
   PostQueryBloc({required this.postQueryRepository}) : super(PostQueryInitial()) {
     on<GetPostsEvent>(_onGetPosts);
@@ -28,7 +29,7 @@ class PostQueryBloc extends Bloc<PostQueryEvent, PostQueryState> {
     emit(PostQueryLoading());
     _allPosts = [];
     _currentCategory = event.category;
-    final result = await postQueryRepository.getPosts(rangeFrom: 0, rangeTo: _pageSize - 1, category: _currentCategory);
+    final result = await postQueryRepository.getPosts(limit: _pageSize, category: _currentCategory);
     result.fold((failure) => emit(PostQueryError(failure.message)), (posts) {
       _allPosts = posts;
       emit(PostsLoaded(posts: _allPosts, hasMore: posts.length >= _pageSize));
@@ -37,13 +38,15 @@ class PostQueryBloc extends Bloc<PostQueryEvent, PostQueryState> {
   }
 
   Future<void> _onLoadMorePosts(LoadMorePostsEvent event, Emitter<PostQueryState> emit) async {
-    final rangeFrom = _allPosts.length;
-    final rangeTo = rangeFrom + _pageSize - 1;
+    if (_isLoadingMore || _allPosts.isEmpty) return;
+    // Cursor = the last loaded post, so posts added by the live feed don't shift the next page.
+    _isLoadingMore = true;
     final result = await postQueryRepository.getPosts(
-      rangeFrom: rangeFrom,
-      rangeTo: rangeTo,
+      limit: _pageSize,
+      startAfterId: _allPosts.last.id,
       category: _currentCategory,
     );
+    _isLoadingMore = false;
     result.fold((failure) => emit(PostQueryError(failure.message)), (posts) {
       _allPosts = [..._allPosts, ...posts];
       emit(PostsLoaded(posts: _allPosts, hasMore: posts.length >= _pageSize));
@@ -74,7 +77,7 @@ class PostQueryBloc extends Bloc<PostQueryEvent, PostQueryState> {
 
   Future<void> _onRefreshPosts(RefreshPostsEvent event, Emitter<PostQueryState> emit) async {
     _allPosts = [];
-    final result = await postQueryRepository.getPosts(rangeFrom: 0, rangeTo: _pageSize - 1, category: _currentCategory);
+    final result = await postQueryRepository.getPosts(limit: _pageSize, category: _currentCategory);
     result.fold((failure) => emit(PostQueryError(failure.message)), (posts) {
       _allPosts = posts;
       emit(PostsLoaded(posts: _allPosts, hasMore: posts.length >= _pageSize));

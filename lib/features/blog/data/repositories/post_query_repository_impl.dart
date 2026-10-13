@@ -11,9 +11,9 @@ class PostQueryRepositoryImpl implements PostQueryRepository {
   PostQueryRepositoryImpl({required this.postQueryDataSource});
 
   @override
-  Future<Either<Failure, List<PostEntity>>> getPosts({int? rangeFrom, int? rangeTo, String? category}) async {
+  Future<Either<Failure, List<PostEntity>>> getPosts({int? limit, String? startAfterId, String? category}) async {
     try {
-      final posts = await postQueryDataSource.getPosts(rangeFrom: rangeFrom, rangeTo: rangeTo, category: category);
+      final posts = await postQueryDataSource.getPosts(limit: limit, startAfterId: startAfterId, category: category);
       return Right(posts);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));

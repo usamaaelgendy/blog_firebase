@@ -7,8 +7,8 @@ abstract class DatabaseClient {
     Map<String, dynamic>? filters,
     String? orderBy,
     bool ascending = false,
-    int? rangeFrom,
-    int? rangeTo,
+    int? limit,
+    String? startAfterId,
   });
 
   Future<Map<String, dynamic>> selectById(String table, String id, {String columns = '*'});

@@ -71,8 +71,8 @@ class FirestoreDatabaseClient implements DatabaseClient {
     Map<String, dynamic>? filters,
     String? orderBy,
     bool ascending = false,
-    int? rangeFrom,
-    int? rangeTo,
+    int? limit,
+    String? startAfterId,
   }) {
     return _guard(() async {
       var query = _filteredQuery(table, filters);
@@ -81,17 +81,17 @@ class FirestoreDatabaseClient implements DatabaseClient {
         query = query.orderBy(orderBy, descending: !ascending);
       }
 
-      // Firestore has no offset, so read up to `rangeTo` and skip the first `rangeFrom` docs.
-      if (rangeFrom != null && rangeTo != null) {
-        query = query.limit(rangeTo + 1);
+      // Cursor pagination: continue after the last doc of the previous page,
+      // so only the docs of this page are read (an offset would re-read every skipped doc).
+      if (startAfterId != null) {
+        final cursor = await (await _docRef(table, startAfterId)).get(_getOptions);
+        query = query.startAfterDocument(cursor);
       }
+      if (limit != null) query = query.limit(limit);
 
       final snapshot = await query.get(_getOptions);
-      final docs = rangeFrom != null && rangeTo != null
-          ? snapshot.docs.skip(rangeFrom)
-          : snapshot.docs;
-
-      return docs.map(_toMap).toList();
+      print(snapshot.docs.length);
+      return snapshot.docs.map(_toMap).toList();
     });
   }
 

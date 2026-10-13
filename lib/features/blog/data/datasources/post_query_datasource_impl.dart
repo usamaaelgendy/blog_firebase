@@ -10,13 +10,13 @@ class PostQueryDataSourceImpl implements PostQueryDataSource {
   PostQueryDataSourceImpl(this._databaseClient);
 
   @override
-  Future<List<PostModel>> getPosts({int? rangeFrom, int? rangeTo, String? category}) async {
+  Future<List<PostModel>> getPosts({int? limit, String? startAfterId, String? category}) async {
     try {
       final response = await _databaseClient.select(
         DBCollection.posts,
         columns: '*, author:profiles!author_id(*)',
-        rangeFrom: rangeFrom,
-        rangeTo: rangeTo,
+        limit: limit,
+        startAfterId: startAfterId,
         orderBy: 'created_at',
         ascending: false,
         filters: category != null ? {'category': category} : null,
