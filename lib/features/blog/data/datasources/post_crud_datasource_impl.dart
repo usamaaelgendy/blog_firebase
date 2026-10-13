@@ -58,6 +58,17 @@ class PostCrudDataSourceImpl implements PostCrudDataSource {
   }
 
   @override
+  Future<void> incrementViewCount(String id) async {
+    try {
+      await _databaseClient.increment(DBCollection.posts, id, column: 'view_count');
+    } on ServerException {
+      rethrow;
+    } catch (e) {
+      throw ServerException('Failed to increment view count: ${e.toString()}');
+    }
+  }
+
+  @override
   Future<PostModel> updatePost({
     required String id,
     String? title,

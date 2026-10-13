@@ -17,6 +17,9 @@ abstract class DatabaseClient {
 
   Future<void> delete(String table, String id);
 
+  /// Atomically adds [by] to the numeric [column] of the row/document [id].
+  Future<void> increment(String table, String id, {required String column, int by = 1});
+
   Future<List<Map<String, dynamic>>> search(
     String table, {
     required String column,

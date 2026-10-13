@@ -13,6 +13,8 @@ abstract class PostCrudRepository {
 
   Future<Either<Failure, PostEntity>> getPostById(String id);
 
+  Future<Either<Failure, void>> incrementViewCount(String id);
+
   Future<Either<Failure, PostEntity>> updatePost({
     required String id,
     String? title,

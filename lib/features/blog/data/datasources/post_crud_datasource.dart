@@ -11,6 +11,8 @@ abstract class PostCrudDataSource {
 
   Future<PostModel> getPostById(String id);
 
+  Future<void> incrementViewCount(String id);
+
   Future<PostModel> updatePost({
     required String id,
     String? title,

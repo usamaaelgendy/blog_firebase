@@ -140,6 +140,21 @@ class FirestoreDatabaseClient implements DatabaseClient {
   }
 
   @override
+  Future<void> increment(
+    String table,
+    String id, {
+    required String column,
+    int by = 1,
+  }) {
+    // `FieldValue.increment` runs on the server, so concurrent views are never lost
+    // (no read-then-write). `updated_at` stays unchanged: a view is not an edit.
+    return _guard(() async {
+      final ref = await _docRef(table, id);
+      await ref.update({column: FieldValue.increment(by)});
+    });
+  }
+
+  @override
   Future<List<Map<String, dynamic>>> search(
     String table, {
     required String column,

@@ -42,6 +42,9 @@ class PostCrudBloc extends Bloc<PostCrudEvent, PostCrudState> {
 
   Future<void> _onGetPostById(GetPostByIdEvent event, Emitter<PostCrudState> emit) async {
     emit(PostCrudLoading());
+    // Count the view first so the loaded post already shows it.
+    // A failed increment must not block reading the post, so its result is ignored.
+    await postCrudRepository.incrementViewCount(event.postId);
     final result = await postCrudRepository.getPostById(event.postId);
     result.fold((failure) => emit(PostCrudError(failure.message)), (post) => emit(PostLoaded(post)));
   }
