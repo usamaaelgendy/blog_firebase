@@ -5,8 +5,6 @@ import 'package:blog_app/core/network/supabase/database_client.dart';
 import 'package:blog_app/core/network/firebase/firestore_database_client.dart';
 import 'package:blog_app/core/network/supabase/storage_client.dart';
 import 'package:blog_app/core/network/supabase/storage_client_impl.dart';
-import 'package:blog_app/core/network/supabase/supabase_realtime_client.dart';
-import 'package:blog_app/core/network/supabase/supabase_realtime_client_impl.dart';
 import 'package:blog_app/features/auth/data/datasources/email_auth_datasource.dart';
 import 'package:blog_app/features/auth/data/datasources/email_auth_datasource_impl.dart';
 import 'package:blog_app/features/auth/data/datasources/phone_auth_datasource.dart';
@@ -62,8 +60,6 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<StorageClient>(() => StorageClientImpl(Supabase.instance.client));
   sl.registerLazySingleton<DatabaseClient>(() => FirestoreDatabaseClient(FirebaseFirestore.instance, sl()));
 
-  sl.registerLazySingleton<SupabaseRealtimeClient>(() => SupabaseRealtimeClientImpl(Supabase.instance.client));
-
   // ===== Auth DataSources =====
   sl.registerLazySingleton<EmailAuthDataSource>(() => EmailAuthDataSourceImpl(sl()));
   sl.registerLazySingleton<SocialAuthDataSource>(() => SocialAuthDataSourceImpl(sl()));
@@ -87,8 +83,8 @@ Future<void> initDependencies() async {
 
   // ===== Blog DataSources =====
   sl.registerLazySingleton<PostCrudDataSource>(() => PostCrudDataSourceImpl(sl(), sl()));
-  sl.registerLazySingleton<PostQueryDataSource>(() => PostQueryDataSourceImpl(sl(), sl()));
-  sl.registerLazySingleton<CommentDataSource>(() => CommentDataSourceImpl(sl(), sl()));
+  sl.registerLazySingleton<PostQueryDataSource>(() => PostQueryDataSourceImpl(sl()));
+  sl.registerLazySingleton<CommentDataSource>(() => CommentDataSourceImpl(sl()));
 
   // ===== Blog Repositories =====
   sl.registerLazySingleton<PostCrudRepository>(() => PostCrudRepositoryImpl(postCrudDataSource: sl()));

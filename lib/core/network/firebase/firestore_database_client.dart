@@ -17,12 +17,18 @@ class FirestoreDatabaseClient implements DatabaseClient {
 
   /// Subcollections: `collection -> (parent collection, field in the data that holds the parent id)`.
   /// e.g. `comments` live in `posts/{post_id}/comments`.
-  static const _subCollections = <String, ({String parent, String parentIdField})>{
-    DBCollection.comments: (parent: DBCollection.posts, parentIdField: 'post_id'),
-  };
+  static const _subCollections =
+      <String, ({String parent, String parentIdField})>{
+        DBCollection.comments: (
+          parent: DBCollection.posts,
+          parentIdField: 'post_id',
+        ),
+      };
 
   // Return a local estimate for `serverTimestamp()` fields that are still pending.
-  static const _getOptions = GetOptions(serverTimestampBehavior: ServerTimestampBehavior.estimate);
+  static const _getOptions = GetOptions(
+    serverTimestampBehavior: ServerTimestampBehavior.estimate,
+  );
 
   FirestoreDatabaseClient(this._firestore, this._authClient);
 
@@ -33,17 +39,21 @@ class FirestoreDatabaseClient implements DatabaseClient {
       if (user == null) throw AuthException('User not authenticated');
 
       final subCollection = _subCollections[table];
-      final ref = await _collection(table, parentId: data[subCollection?.parentIdField] as String?).add({
-        ...data,
-        'author': {
-          'id': user.id,
-          'name': user.displayName,
-          'avatar_url': user.photoUrl,
-          'created_at': user.createdAt.toIso8601String(),
-        },
-        'created_at': FieldValue.serverTimestamp(),
-        'updated_at': FieldValue.serverTimestamp(),
-      });
+      final ref =
+          await _collection(
+            table,
+            parentId: data[subCollection?.parentIdField] as String?,
+          ).add({
+            ...data,
+            'author': {
+              'id': user.id,
+              'name': user.displayName,
+              'avatar_url': user.photoUrl,
+              'created_at': user.createdAt.toIso8601String(),
+            },
+            'created_at': FieldValue.serverTimestamp(),
+            'updated_at': FieldValue.serverTimestamp(),
+          });
 
       print(ref.id);
 
@@ -65,14 +75,7 @@ class FirestoreDatabaseClient implements DatabaseClient {
     int? rangeTo,
   }) {
     return _guard(() async {
-      final where = Map<String, dynamic>.of(filters ?? {});
-      final parentId = where.remove(_subCollections[table]?.parentIdField) as String?;
-
-      Query<Map<String, dynamic>> query = _collection(table, parentId: parentId);
-
-      where.forEach((key, value) {
-        query = query.where(key, isEqualTo: value);
-      });
+      var query = _filteredQuery(table, filters);
 
       if (orderBy != null) {
         query = query.orderBy(orderBy, descending: !ascending);
@@ -84,19 +87,31 @@ class FirestoreDatabaseClient implements DatabaseClient {
       }
 
       final snapshot = await query.get(_getOptions);
-      final docs = rangeFrom != null && rangeTo != null ? snapshot.docs.skip(rangeFrom) : snapshot.docs;
+      final docs = rangeFrom != null && rangeTo != null
+          ? snapshot.docs.skip(rangeFrom)
+          : snapshot.docs;
 
       return docs.map(_toMap).toList();
     });
   }
 
   @override
-  Future<Map<String, dynamic>> selectById(String table, String id, {String columns = '*'}) {
-    return _guard(() async => _toMap(await (await _docRef(table, id)).get(_getOptions)));
+  Future<Map<String, dynamic>> selectById(
+    String table,
+    String id, {
+    String columns = '*',
+  }) {
+    return _guard(
+      () async => _toMap(await (await _docRef(table, id)).get(_getOptions)),
+    );
   }
 
   @override
-  Future<Map<String, dynamic>> update(String table, String id, Map<String, dynamic> data) {
+  Future<Map<String, dynamic>> update(
+    String table,
+    String id,
+    Map<String, dynamic> data,
+  ) {
     return _guard(() async {
       final ref = await _docRef(table, id);
       await ref.update({...data, 'updated_at': FieldValue.serverTimestamp()});
@@ -111,7 +126,8 @@ class FirestoreDatabaseClient implements DatabaseClient {
 
       // Firestore does not delete subcollections with their parent document.
       final batch = _firestore.batch();
-      for (final MapEntry(key: child, value: subCollection) in _subCollections.entries) {
+      for (final MapEntry(key: child, value: subCollection)
+          in _subCollections.entries) {
         if (subCollection.parent != table) continue;
         final children = await ref.collection(child).get(_getOptions);
         for (final doc in children.docs) {
@@ -132,43 +148,123 @@ class FirestoreDatabaseClient implements DatabaseClient {
   }) {
     // Firestore has no `ilike`, so filter by "contains" on the client.
     return _guard(() async {
-      final snapshot = await _collection(table).orderBy('created_at', descending: true).get(_getOptions);
+      final snapshot = await _collection(
+        table,
+      ).orderBy('created_at', descending: true).get(_getOptions);
       final needle = query.toLowerCase();
 
       return snapshot.docs
           .map(_toMap)
-          .where((doc) => (doc[column] as String? ?? '').toLowerCase().contains(needle))
+          .where(
+            (doc) =>
+                (doc[column] as String? ?? '').toLowerCase().contains(needle),
+          )
           .toList();
     });
   }
 
-  CollectionReference<Map<String, dynamic>> _collection(String table, {String? parentId}) {
+  @override
+  Stream<Map<String, dynamic>> watchInserts(
+    String table, {
+    String columns = '*',
+    Map<String, dynamic>? filters,
+  }) {
+    // Only docs created after the listener starts, so the first snapshot is empty
+    // and old docs are never read. A pending `serverTimestamp()` doesn't match this filter,
+    // so a new doc shows up once the server has written its `created_at`.
+    final startedAt = Timestamp.now();
+    final query = _filteredQuery(
+      table,
+      filters,
+    ).where('created_at', isGreaterThan: startedAt);
+
+    return _guardStream(
+      query.snapshots().expand(
+        (snapshot) => snapshot.docChanges
+            .where((change) => change.type == DocumentChangeType.added)
+            .map((change) => _toMap(change.doc)),
+      ),
+    );
+  }
+
+  @override
+  Stream<String> watchDeletes(String table, {Map<String, dynamic>? filters}) {
+    // Deletes must cover docs created before the listener started, so no `created_at` filter.
+    // The first snapshot is the current state (only `added` changes), later `removed` changes are deletes.
+    return _guardStream(
+      _filteredQuery(table, filters).snapshots().expand(
+        (snapshot) => snapshot.docChanges
+            .where((change) => change.type == DocumentChangeType.removed)
+            .map((change) => change.doc.id),
+      ),
+    );
+  }
+
+  /// Builds a query on [table] with `isEqualTo` [filters]; the parent id filter picks the subcollection.
+  Query<Map<String, dynamic>> _filteredQuery(
+    String table,
+    Map<String, dynamic>? filters,
+  ) {
+    final where = Map<String, dynamic>.of(filters ?? {});
+    final parentId =
+        where.remove(_subCollections[table]?.parentIdField) as String?;
+
+    Query<Map<String, dynamic>> query = _collection(table, parentId: parentId);
+    where.forEach((key, value) {
+      query = query.where(key, isEqualTo: value);
+    });
+    return query;
+  }
+
+  CollectionReference<Map<String, dynamic>> _collection(
+    String table, {
+    String? parentId,
+  }) {
     final subCollection = _subCollections[table];
     if (subCollection == null) return _firestore.collection(table);
 
-    if (parentId == null) throw ServerException('${subCollection.parentIdField} is required for $table');
-    return _firestore.collection(subCollection.parent).doc(parentId).collection(table);
+    if (parentId == null)
+      throw ServerException(
+        '${subCollection.parentIdField} is required for $table',
+      );
+    return _firestore
+        .collection(subCollection.parent)
+        .doc(parentId)
+        .collection(table);
   }
 
-  Future<DocumentReference<Map<String, dynamic>>> _docRef(String table, String id) async {
-    if (!_subCollections.containsKey(table)) return _firestore.collection(table).doc(id);
+  Future<DocumentReference<Map<String, dynamic>>> _docRef(
+    String table,
+    String id,
+  ) async {
+    if (!_subCollections.containsKey(table))
+      return _firestore.collection(table).doc(id);
 
     // posts/{postId}/comments/{commentsId}
     // Subcollection docs are found by their `id` field across all parents.
-    final snapshot = await _firestore.collectionGroup(table).where('id', isEqualTo: id).limit(1).get(_getOptions);
-    if (snapshot.docs.isEmpty) throw ServerException('Document not found', 'not-found');
+    final snapshot = await _firestore
+        .collectionGroup(table)
+        .where('id', isEqualTo: id)
+        .limit(1)
+        .get(_getOptions);
+    if (snapshot.docs.isEmpty)
+      throw ServerException('Document not found', 'not-found');
     return snapshot.docs.first.reference;
   }
 
   Map<String, dynamic> _toMap(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data();
     if (data == null) throw ServerException('Document not found', 'not-found');
-    return {...data.map((key, value) => MapEntry(key, _fromFirestore(value))), 'id': doc.id};
+    return {
+      ...data.map((key, value) => MapEntry(key, _fromFirestore(value))),
+      'id': doc.id,
+    };
   }
 
   dynamic _fromFirestore(dynamic value) {
     if (value is Timestamp) return value.toDate().toIso8601String();
-    if (value is Map) return value.map((key, v) => MapEntry(key as String, _fromFirestore(v)));
+    if (value is Map)
+      return value.map((key, v) => MapEntry(key as String, _fromFirestore(v)));
     if (value is List) return value.map(_fromFirestore).toList();
     return value;
   }
@@ -180,5 +276,15 @@ class FirestoreDatabaseClient implements DatabaseClient {
     } on FirebaseException catch (e) {
       throw ServerException(e.message ?? 'Database request failed', e.code);
     }
+  }
+
+  /// Converts Firestore stream errors into the app's [ServerException].
+  Stream<T> _guardStream<T>(Stream<T> stream) {
+    return stream.handleError((Object e) {
+      throw ServerException(
+        (e as FirebaseException).message ?? 'Database stream failed',
+        e.code,
+      );
+    }, test: (e) => e is FirebaseException);
   }
 }

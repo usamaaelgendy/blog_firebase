@@ -23,4 +23,14 @@ abstract class DatabaseClient {
     required String query,
     String columns = '*',
   });
+
+  /// Emits every row/document inserted into [table] after the listener starts.
+  Stream<Map<String, dynamic>> watchInserts(
+    String table, {
+    String columns = '*',
+    Map<String, dynamic>? filters,
+  });
+
+  /// Emits the id of every row/document deleted from [table] after the listener starts.
+  Stream<String> watchDeletes(String table, {Map<String, dynamic>? filters});
 }

@@ -1,6 +1,4 @@
-import 'package:blog_app/core/constants/db_collections.dart';
 import 'package:blog_app/core/di/injection_container.dart';
-import 'package:blog_app/core/network/supabase/supabase_realtime_client.dart';
 import 'package:blog_app/core/theme/app_theme.dart';
 import 'package:blog_app/features/auth/presentation/bloc/session/session_bloc.dart';
 import 'package:blog_app/features/auth/presentation/bloc/session/session_event.dart';
@@ -30,21 +28,9 @@ void main() async {
 
   await Supabase.initialize(url: dotenv.env['SUPABASE_URL']!, anonKey: dotenv.env['SUPABASE_ANON_KEY']!);
 
-
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   await initDependencies();
-
-  final realtime = sl<SupabaseRealtimeClient>();
-
-  realtime.subscribeToTable(
-    channelName: 'testing',
-    table: DBCollection.posts,
-    onChnage: (payload) {
-      print(payload);
-    },
-  );
-
 
   runApp(const MyApp());
 }

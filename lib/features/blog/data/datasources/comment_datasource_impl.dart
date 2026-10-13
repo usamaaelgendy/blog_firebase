@@ -1,18 +1,13 @@
-import 'dart:async';
-
 import 'package:blog_app/core/constants/db_collections.dart';
 import 'package:blog_app/core/error/exceptions.dart';
 import 'package:blog_app/core/network/supabase/database_client.dart';
-import 'package:blog_app/core/network/supabase/supabase_realtime_client.dart';
 import 'package:blog_app/features/blog/data/datasources/comment_datasource.dart';
 import 'package:blog_app/features/blog/data/models/comment_model.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class CommentDataSourceImpl implements CommentDataSource {
   final DatabaseClient _databaseClient;
-  final SupabaseRealtimeClient _realtimeClient;
 
-  CommentDataSourceImpl(this._databaseClient, this._realtimeClient);
+  CommentDataSourceImpl(this._databaseClient);
 
   @override
   Future<CommentModel> addComment({
@@ -75,56 +70,17 @@ class CommentDataSourceImpl implements CommentDataSource {
 
   @override
   Stream<CommentModel> watchNewComments({required String postId}) {
-    final controller = StreamController<CommentModel>();
-    final channel = _realtimeClient.subscribeToTable(
-      channelName: 'comments-insert-$postId',
-      table: DBCollection.comments,
-      event: PostgresChangeEvent.insert,
-      filterColumn: 'post_id',
-      filterValue: postId,
-      onChnage: (payload) async {
-        final newComment = payload.newRecord;
-        final commentId = newComment['id'] as String;
-
-        final hydrated = await _databaseClient.selectById(
+    return _databaseClient
+        .watchInserts(
           DBCollection.comments,
-          commentId,
           columns: '*, author:profiles!author_id(*)',
-        );
-
-        controller.add(CommentModel.fromJson(hydrated));
-      },
-    );
-
-    controller.onCancel = () async {
-      await _realtimeClient.unSubscribeFromTable(channel);
-      await controller.close();
-    };
-
-    return controller.stream;
+          filters: {'post_id': postId},
+        )
+        .map(CommentModel.fromJson);
   }
 
   @override
   Stream<String> watchDeletedComments({required String postId}) {
-    final controller = StreamController<String>();
-    final channel = _realtimeClient.subscribeToTable(
-      channelName: 'comments-delete-$postId',
-      table: DBCollection.comments,
-      event: PostgresChangeEvent.delete,
-      filterColumn: 'post_id',
-      filterValue: postId,
-      onChnage: (payload) {
-        final oldComment = payload.oldRecord;
-        final commentId = oldComment['id'] as String;
-        controller.add(commentId);
-      },
-    );
-
-    controller.onCancel = () async {
-      await _realtimeClient.unSubscribeFromTable(channel);
-      await controller.close();
-    };
-
-    return controller.stream;
+    return _databaseClient.watchDeletes(DBCollection.comments, filters: {'post_id': postId});
   }
 }
