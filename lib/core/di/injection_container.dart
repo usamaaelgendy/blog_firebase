@@ -46,6 +46,7 @@ import 'package:blog_app/features/blog/presentation/bloc/comment/comment_bloc.da
 import 'package:blog_app/features/blog/presentation/bloc/post_crud/post_crud_bloc.dart';
 import 'package:blog_app/features/blog/presentation/bloc/post_query/post_query_bloc.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:get_it/get_it.dart';
@@ -55,7 +56,7 @@ final sl = GetIt.instance;
 Future<void> initDependencies() async {
   // ===== Core =====
   sl.registerLazySingleton<AuthClient>(
-    () => FirebaseAuthClient(FirebaseAuth.instance),
+    () => FirebaseAuthClient(FirebaseAuth.instance, FirebaseFunctions.instance),
   );
   sl.registerLazySingleton<StorageClient>(() => FirestoreStorageClient(FirebaseStorage.instance));
   sl.registerLazySingleton<DatabaseClient>(() => FirestoreDatabaseClient(FirebaseFirestore.instance, sl()));

@@ -3,15 +3,17 @@ import 'dart:async';
 import 'package:blog_app/core/error/exceptions.dart';
 import 'package:blog_app/core/network/auth_client.dart';
 import 'package:blog_app/features/auth/data/models/user_model.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 
 class FirebaseAuthClient implements AuthClient {
   final fb.FirebaseAuth _firebaseAuth;
+  final FirebaseFunctions _functions;
 
   /// Set by [signInWithOtp] and consumed by [verifyOtp].
   String? _phoneVerificationId;
 
-  FirebaseAuthClient(this._firebaseAuth);
+  FirebaseAuthClient(this._firebaseAuth, this._functions);
 
   @override
   Future<UserModel> signUp({required String email, required String password, required String name}) {
@@ -150,7 +152,11 @@ class FirebaseAuthClient implements AuthClient {
 
   @override
   Future<void> deleteAccount() {
-    return _guard(() => _requireUser(_firebaseAuth.currentUser, 'User not authenticated').delete());
+    return _guard(() async {
+      _requireUser(_firebaseAuth.currentUser, 'User not authenticated');
+      await _functions.httpsCallable('deleteAccount').call();
+      await _firebaseAuth.signOut();
+    });
   }
 
   fb.User _requireUser(fb.User? user, String message) {
@@ -164,6 +170,8 @@ class FirebaseAuthClient implements AuthClient {
       return await action();
     } on fb.FirebaseAuthException catch (e) {
       throw AuthException(e.message ?? 'Authentication failed', e.code);
+    } on FirebaseFunctionsException catch (e) {
+      throw AuthException(e.message ?? 'Request failed', e.code);
     }
   }
 }
