@@ -1,0 +1,30 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // The uploaded file is an image smaller than `maxMb` megabytes.
+    function isImageUnder(maxMb) {
+      return request.resource.contentType.matches('image/.*')
+        && request.resource.size < maxMb * 1024 * 1024;
+    }
+
+    // avatars/{userId}/avatar.{ext}
+    match /avatars/{userId}/{fileName} {
+      allow read: if true;
+      allow create, update: if isOwner(userId) && isImageUnder(2);
+      allow delete: if isOwner(userId);
+    }
+
+    // post-image/{userId}/{timestamp}.{ext}
+    match /post-image/{userId}/{fileName} {
+      allow read: if true;
+      allow create, update: if isOwner(userId) && isImageUnder(3);
+      allow delete: if isOwner(userId);
+    }
+  }
+}
