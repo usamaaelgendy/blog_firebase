@@ -8,7 +8,5 @@ abstract class StorageClient {
     String? contentType,
   });
 
-  String getPublicUrl({required String bucket, required String path});
-
   Future<void> deleteFile({required String bucket, required String path});
 }

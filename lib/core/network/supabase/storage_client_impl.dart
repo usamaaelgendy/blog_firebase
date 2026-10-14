@@ -24,11 +24,6 @@ class StorageClientImpl implements StorageClient {
   }
 
   @override
-  String getPublicUrl({required String bucket, required String path}) {
-    return _client.storage.from(bucket).getPublicUrl(path);
-  }
-
-  @override
   Future<void> deleteFile({required String bucket, required String path}) async {
     await _client.storage.from(bucket).remove([path]);
   }
