@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:blog_app/features/blog/domain/repositories/post_crud_repository.dart';
 import 'package:blog_app/features/blog/presentation/bloc/post_crud/post_crud_event.dart';
 import 'package:blog_app/features/blog/presentation/bloc/post_crud/post_crud_state.dart';
@@ -44,7 +46,7 @@ class PostCrudBloc extends Bloc<PostCrudEvent, PostCrudState> {
     emit(PostCrudLoading());
     // Count the view first so the loaded post already shows it.
     // A failed increment must not block reading the post, so its result is ignored.
-    await postCrudRepository.incrementViewCount(event.postId);
+    unawaited(postCrudRepository.incrementViewCount(event.postId));
     final result = await postCrudRepository.getPostById(event.postId);
     result.fold((failure) => emit(PostCrudError(failure.message)), (post) => emit(PostLoaded(post)));
   }
