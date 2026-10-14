@@ -1,0 +1,62 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // The signed-in user is the owner of the document (`author_id` is set on insert).
+    function isOwner(data) {
+      return isSignedIn() && data.author_id == request.auth.uid;
+    }
+
+    // A new document must belong to the user who creates it.
+    function isValidNewDoc() {
+      return isOwner(request.resource.data)
+        && request.resource.data.author.id == request.auth.uid;
+    }
+
+    // An edit can't move the document to another author.
+    function keepsAuthor() {
+      return request.resource.data.author_id == resource.data.author_id
+        && request.resource.data.author == resource.data.author;
+    }
+
+    // A view only adds 1 to `view_count` and touches nothing else.
+    function isViewIncrement() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['view_count'])
+        && request.resource.data.view_count == resource.data.get('view_count', 0) + 1;
+    }
+
+    match /posts/{postId} {
+      allow read: if true;
+      allow create: if isValidNewDoc();
+      allow update: if (isOwner(resource.data) && keepsAuthor()) || isViewIncrement();
+      allow delete: if isOwner(resource.data);
+
+      match /comments/{commentId} {
+        function postAuthorId() {
+          return get(/databases/$(database)/documents/posts/$(postId)).data.author_id;
+        }
+
+        allow read: if true;
+        allow create: if isValidNewDoc()
+          && request.resource.data.post_id == postId
+          && exists(/databases/$(database)/documents/posts/$(postId));
+        // `post_id` is fixed, so a comment can't be moved to another post.
+        allow update: if isOwner(resource.data) && keepsAuthor()
+          && request.resource.data.post_id == resource.data.post_id;
+        // The comment author, or the post author (deletes any comment on their post).
+        allow delete: if isOwner(resource.data)
+          || (isSignedIn() && postAuthorId() == request.auth.uid);
+      }
+    }
+
+    // Comments are looked up by `id` with a collection group query, which needs its own read rule.
+    match /{path=**}/comments/{commentId} {
+      allow read: if true;
+    }
+  }
+}
