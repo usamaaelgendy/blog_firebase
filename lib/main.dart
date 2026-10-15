@@ -1,4 +1,5 @@
 import 'package:blog_app/core/di/injection_container.dart';
+import 'package:blog_app/core/notifications/notification_service.dart';
 import 'package:blog_app/core/theme/app_theme.dart';
 import 'package:blog_app/features/auth/presentation/bloc/session/session_bloc.dart';
 import 'package:blog_app/features/auth/presentation/bloc/session/session_event.dart';
@@ -31,6 +32,8 @@ void main() async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   await initDependencies();
+
+  await sl<NotificationService>().init();
 
   runApp(const MyApp());
 }

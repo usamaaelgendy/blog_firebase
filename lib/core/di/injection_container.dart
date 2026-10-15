@@ -5,6 +5,7 @@ import 'package:blog_app/core/network/supabase/database_client.dart';
 import 'package:blog_app/core/network/firebase/firestore_database_client.dart';
 import 'package:blog_app/core/network/supabase/storage_client.dart';
 import 'package:blog_app/core/network/firebase/firestore_storage_client.dart';
+import 'package:blog_app/core/notifications/notification_service.dart';
 import 'package:blog_app/features/auth/data/datasources/email_auth_datasource.dart';
 import 'package:blog_app/features/auth/data/datasources/email_auth_datasource_impl.dart';
 import 'package:blog_app/features/auth/data/datasources/phone_auth_datasource.dart';
@@ -48,6 +49,7 @@ import 'package:blog_app/features/blog/presentation/bloc/post_query/post_query_b
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:get_it/get_it.dart';
 
@@ -60,6 +62,7 @@ Future<void> initDependencies() async {
   );
   sl.registerLazySingleton<StorageClient>(() => FirestoreStorageClient(FirebaseStorage.instance));
   sl.registerLazySingleton<DatabaseClient>(() => FirestoreDatabaseClient(FirebaseFirestore.instance, sl()));
+  sl.registerLazySingleton(() => NotificationService(FirebaseMessaging.instance));
 
   // ===== Auth DataSources =====
   sl.registerLazySingleton<EmailAuthDataSource>(() => EmailAuthDataSourceImpl(sl()));
