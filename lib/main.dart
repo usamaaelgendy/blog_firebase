@@ -17,6 +17,7 @@ import 'package:blog_app/features/blog/presentation/screens/post_detail_screen.d
 import 'package:blog_app/features/blog/presentation/screens/posts_list_screen.dart';
 import 'package:blog_app/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -30,6 +31,8 @@ void main() async {
   await Supabase.initialize(url: dotenv.env['SUPABASE_URL']!, anonKey: dotenv.env['SUPABASE_ANON_KEY']!);
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
   await initDependencies();
 
@@ -48,6 +51,7 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Blog App',
         debugShowCheckedModeBanner: false,
+        scaffoldMessengerKey: NotificationService.scaffoldMessengerKey,
         theme: AppTheme.lightTheme,
         home: const AuthWrapper(),
         onGenerateRoute: (settings) {
