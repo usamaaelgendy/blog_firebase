@@ -1,5 +1,6 @@
+import 'package:blog_app/core/notifications/local_notification_service.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 /// Runs in its own isolate when a message arrives while the app is in the
 /// background or terminated. Must be a top-level function.
@@ -14,17 +15,17 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 /// Handles Firebase Cloud Messaging setup: permission, FCM token and foreground messages.
 class NotificationService {
   final FirebaseMessaging _messaging;
+  final LocalNotificationService _localNotifications;
 
-  /// Attached to MaterialApp so we can show snackbars without a BuildContext.
-  static final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
-
-  NotificationService(this._messaging);
+  NotificationService(this._messaging, this._localNotifications);
 
   Future<void> init() async {
     final settings = await _messaging.requestPermission();
     debugPrint('Notification permission: ${settings.authorizationStatus}');
 
     if (settings.authorizationStatus == AuthorizationStatus.denied) return;
+
+    await _localNotifications.init();
 
     final token = await _messaging.getToken();
     debugPrint('FCM token: $token');
@@ -34,21 +35,11 @@ class NotificationService {
     FirebaseMessaging.onMessage.listen(_onForegroundMessage);
   }
 
+  /// FCM doesn't display notifications while the app is in the foreground, so we show them ourselves.
   void _onForegroundMessage(RemoteMessage message) {
     final notification = message.notification;
     if (notification == null) return;
 
-    scaffoldMessengerKey.currentState?.showSnackBar(
-      SnackBar(
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(notification.title ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
-            Text(notification.body ?? ''),
-          ],
-        ),
-      ),
-    );
+    _localNotifications.show(id: notification.hashCode, title: notification.title, body: notification.body);
   }
 }

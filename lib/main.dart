@@ -51,7 +51,6 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Blog App',
         debugShowCheckedModeBanner: false,
-        scaffoldMessengerKey: NotificationService.scaffoldMessengerKey,
         theme: AppTheme.lightTheme,
         home: const AuthWrapper(),
         onGenerateRoute: (settings) {
