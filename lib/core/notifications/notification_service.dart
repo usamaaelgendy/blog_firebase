@@ -27,12 +27,28 @@ class NotificationService {
 
     await _localNotifications.init();
 
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      final apnsToken = await _waitForApnsToken();
+      debugPrint('APNs token: $apnsToken');
+      if (apnsToken == null) return;
+    }
+
     final token = await _messaging.getToken();
     debugPrint('FCM token: $token');
 
     _messaging.onTokenRefresh.listen((token) => debugPrint('FCM token refreshed: $token'));
 
     FirebaseMessaging.onMessage.listen(_onForegroundMessage);
+  }
+
+  /// On iOS, getToken() throws until the APNs token is registered, which can take a moment after launch.
+  Future<String?> _waitForApnsToken({int attempts = 5}) async {
+    for (var i = 0; i < attempts; i++) {
+      final apnsToken = await _messaging.getAPNSToken();
+      if (apnsToken != null) return apnsToken;
+      await Future.delayed(const Duration(seconds: 1));
+    }
+    return null;
   }
 
   /// FCM doesn't display notifications while the app is in the foreground, so we show them ourselves.
