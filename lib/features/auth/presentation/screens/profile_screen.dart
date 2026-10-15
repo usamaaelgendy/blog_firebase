@@ -1,4 +1,5 @@
 import 'package:blog_app/core/di/injection_container.dart';
+import 'package:blog_app/core/notifications/notification_service.dart';
 import 'package:blog_app/features/auth/presentation/bloc/profile/profile_bloc.dart';
 import 'package:blog_app/features/auth/presentation/bloc/profile/profile_event.dart';
 import 'package:blog_app/features/auth/presentation/bloc/profile/profile_state.dart';
@@ -111,6 +112,7 @@ class ProfileView extends StatelessWidget {
                     ).textTheme.bodyLarge?.copyWith(color: Colors.grey),
                   ),
                   const SizedBox(height: 32),
+                  const NewPostNotificationsSwitch(),
                   ListTile(
                     leading: const Icon(Icons.logout, color: Colors.red),
                     title: const Text(
@@ -194,5 +196,34 @@ class ProfileView extends StatelessWidget {
     if (name != null && name.isNotEmpty) {
       profileBloc.add(UpdateProfileEvent(name: name));
     }
+  }
+}
+
+/// Turns the `new_post` topic on or off. The choice is saved in SharedPreferences
+/// by [NotificationService], so it survives app restarts.
+class NewPostNotificationsSwitch extends StatefulWidget {
+  const NewPostNotificationsSwitch({super.key});
+
+  @override
+  State<NewPostNotificationsSwitch> createState() => _NewPostNotificationsSwitchState();
+}
+
+class _NewPostNotificationsSwitchState extends State<NewPostNotificationsSwitch> {
+  final _notificationService = sl<NotificationService>();
+  late bool _enabled = _notificationService.isNewPostTopicEnabled;
+
+  Future<void> _onChanged(bool value) async {
+    setState(() => _enabled = value);
+    await _notificationService.setNewPostTopicEnabled(value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SwitchListTile(
+      secondary: const Icon(Icons.notifications_outlined),
+      title: const Text('New post notifications'),
+      value: _enabled,
+      onChanged: _onChanged,
+    );
   }
 }

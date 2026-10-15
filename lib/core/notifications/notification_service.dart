@@ -5,6 +5,7 @@ import 'package:blog_app/core/notifications/notification_type.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Runs in its own isolate when a message arrives while the app is in the
 /// background or terminated. Must be a top-level function.
@@ -24,11 +25,38 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 class NotificationService {
   static const _typeKey = 'type';
 
+  /// Topic every user joins by default, so the backend can notify everyone about new posts.
+  static const newPostTopic = 'new_post';
+  static const _newPostTopicKey = 'new_post_topic_enabled';
+
   final FirebaseMessaging _messaging;
   final LocalNotificationService _localNotifications;
   final GlobalKey<NavigatorState> _navigatorKey;
+  final SharedPreferences _prefs;
 
-  NotificationService(this._messaging, this._localNotifications, this._navigatorKey);
+  NotificationService(this._messaging, this._localNotifications, this._navigatorKey, this._prefs);
+
+  /// On by default until the user turns it off from the profile screen.
+  bool get isNewPostTopicEnabled => _prefs.getBool(_newPostTopicKey) ?? true;
+
+  Future<void> setNewPostTopicEnabled(bool enabled) async {
+    await _prefs.setBool(_newPostTopicKey, enabled);
+    await _syncNewPostTopic();
+  }
+
+  /// Subscribing again on every launch is safe and keeps FCM in sync with the saved choice.
+  Future<void> _syncNewPostTopic() async {
+    try {
+      if (isNewPostTopicEnabled) {
+        await _messaging.subscribeToTopic(newPostTopic);
+      } else {
+        await _messaging.unsubscribeFromTopic(newPostTopic);
+      }
+      debugPrint('Topic $newPostTopic subscribed: $isNewPostTopicEnabled');
+    } catch (e) {
+      debugPrint('Topic $newPostTopic sync failed: $e');
+    }
+  }
 
   Future<void> init() async {
     final settings = await _messaging.requestPermission();
@@ -59,6 +87,8 @@ class NotificationService {
     _messaging.onTokenRefresh.listen(
       (token) => debugPrint('FCM token refreshed: $token'),
     );
+
+    await _syncNewPostTopic();
 
     FirebaseMessaging.onMessage.listen(_onForegroundMessage);
   }

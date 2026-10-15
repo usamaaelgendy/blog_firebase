@@ -55,11 +55,13 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 final sl = GetIt.instance;
 
 Future<void> initDependencies() async {
   // ===== Core =====
+  sl.registerSingleton<SharedPreferences>(await SharedPreferences.getInstance());
   sl.registerLazySingleton<AuthClient>(
     () => FirebaseAuthClient(FirebaseAuth.instance, FirebaseFunctions.instance),
   );
@@ -67,7 +69,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<DatabaseClient>(() => FirestoreDatabaseClient(FirebaseFirestore.instance, sl()));
   sl.registerLazySingleton(() => LocalNotificationService(FlutterLocalNotificationsPlugin()));
   sl.registerLazySingleton(() => GlobalKey<NavigatorState>());
-  sl.registerLazySingleton(() => NotificationService(FirebaseMessaging.instance, sl(), sl()));
+  sl.registerLazySingleton(() => NotificationService(FirebaseMessaging.instance, sl(), sl(), sl()));
 
   // ===== Auth DataSources =====
   sl.registerLazySingleton<EmailAuthDataSource>(() => EmailAuthDataSourceImpl(sl()));
