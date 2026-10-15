@@ -25,6 +25,12 @@ class NotificationService {
 
     if (settings.authorizationStatus == AuthorizationStatus.denied) return;
 
+    await _messaging.setForegroundNotificationPresentationOptions(
+      sound: true,
+      badge: true,
+      alert: true,
+    );
+
     await _localNotifications.init();
 
     if (defaultTargetPlatform == TargetPlatform.iOS) {
@@ -36,7 +42,9 @@ class NotificationService {
     final token = await _messaging.getToken();
     debugPrint('FCM token: $token');
 
-    _messaging.onTokenRefresh.listen((token) => debugPrint('FCM token refreshed: $token'));
+    _messaging.onTokenRefresh.listen(
+      (token) => debugPrint('FCM token refreshed: $token'),
+    );
 
     FirebaseMessaging.onMessage.listen(_onForegroundMessage);
   }
@@ -53,9 +61,14 @@ class NotificationService {
 
   /// FCM doesn't display notifications while the app is in the foreground, so we show them ourselves.
   void _onForegroundMessage(RemoteMessage message) {
+    if (defaultTargetPlatform == TargetPlatform.iOS) return;
     final notification = message.notification;
     if (notification == null) return;
 
-    _localNotifications.show(id: notification.hashCode, title: notification.title, body: notification.body);
+    _localNotifications.show(
+      id: notification.hashCode,
+      title: notification.title,
+      body: notification.body,
+    );
   }
 }
