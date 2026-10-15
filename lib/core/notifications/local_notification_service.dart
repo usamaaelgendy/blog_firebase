@@ -34,6 +34,14 @@ class LocalNotificationService {
         ?.createNotificationChannel(_defaultChannel);
   }
 
+  /// Payload of the notification that launched the app from a terminated state, if any.
+  /// onDidReceiveNotificationResponse is not called in that case.
+  Future<String?> getLaunchPayload() async {
+    final details = await _plugin.getNotificationAppLaunchDetails();
+    if (details == null || !details.didNotificationLaunchApp) return null;
+    return details.notificationResponse?.payload;
+  }
+
   Future<void> show({
     required int id,
     String? title,

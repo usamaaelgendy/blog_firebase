@@ -50,6 +50,7 @@ class MyApp extends StatelessWidget {
       create: (context) => sl<SessionBloc>()..add(const CheckAuthStatusEvent()),
       child: MaterialApp(
         title: 'Blog App',
+        navigatorKey: sl<GlobalKey<NavigatorState>>(),
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         home: const AuthWrapper(),
