@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:blog_app/core/analytics/analytics_service.dart';
 import 'package:blog_app/core/constants/db_collections.dart';
 import 'package:blog_app/core/error/exceptions.dart';
 import 'package:blog_app/core/network/supabase/database_client.dart';
@@ -12,8 +13,9 @@ class PostCrudDataSourceImpl implements PostCrudDataSource {
   final DatabaseClient _databaseClient;
   final StorageClient _storageClient;
   final PerformanceService _performanceService;
+  final AnalyticsService _analyticsService;
 
-  PostCrudDataSourceImpl(this._databaseClient, this._storageClient, this._performanceService);
+  PostCrudDataSourceImpl(this._databaseClient, this._storageClient, this._performanceService, this._analyticsService);
 
   @override
   Future<PostModel> createPost({
@@ -33,6 +35,7 @@ class PostCrudDataSourceImpl implements PostCrudDataSource {
       });
 
       final postId = response['id'] as String;
+      await _analyticsService.logPostCreated(postId: postId, category: category);
 
       return await getPostById(postId);
     } on ServerException {

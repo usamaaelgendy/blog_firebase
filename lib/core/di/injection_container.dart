@@ -1,3 +1,4 @@
+import 'package:blog_app/core/analytics/analytics_service.dart';
 import 'package:blog_app/core/crashlytics/crashlytics_service.dart';
 import 'package:blog_app/core/network/auth_client.dart';
 import 'package:blog_app/core/network/firebase/auth_client_impl.dart';
@@ -51,6 +52,7 @@ import 'package:blog_app/features/blog/presentation/bloc/post_crud/post_crud_blo
 import 'package:blog_app/features/blog/presentation/bloc/post_query/post_query_bloc.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -68,6 +70,7 @@ Future<void> initDependencies() async {
   sl.registerSingleton<SharedPreferences>(await SharedPreferences.getInstance());
   sl.registerLazySingleton(() => CrashlyticsService(FirebaseCrashlytics.instance));
   sl.registerLazySingleton(() => PerformanceService(FirebasePerformance.instance));
+  sl.registerLazySingleton(() => AnalyticsService(FirebaseAnalytics.instance));
   sl.registerLazySingleton<AuthClient>(
     () => FirebaseAuthClient(FirebaseAuth.instance, FirebaseFunctions.instance),
   );
@@ -99,9 +102,9 @@ Future<void> initDependencies() async {
   sl.registerFactory(() => ProfileBloc(profileRepository: sl()));
 
   // ===== Blog DataSources =====
-  sl.registerLazySingleton<PostCrudDataSource>(() => PostCrudDataSourceImpl(sl(), sl(), sl()));
+  sl.registerLazySingleton<PostCrudDataSource>(() => PostCrudDataSourceImpl(sl(), sl(), sl(), sl()));
   sl.registerLazySingleton<PostQueryDataSource>(() => PostQueryDataSourceImpl(sl(), sl()));
-  sl.registerLazySingleton<CommentDataSource>(() => CommentDataSourceImpl(sl()));
+  sl.registerLazySingleton<CommentDataSource>(() => CommentDataSourceImpl(sl(), sl()));
 
   // ===== Blog Repositories =====
   sl.registerLazySingleton<PostCrudRepository>(() => PostCrudRepositoryImpl(postCrudDataSource: sl()));

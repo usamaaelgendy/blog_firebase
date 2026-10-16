@@ -1,3 +1,4 @@
+import 'package:blog_app/core/analytics/analytics_service.dart';
 import 'package:blog_app/core/constants/db_collections.dart';
 import 'package:blog_app/core/error/exceptions.dart';
 import 'package:blog_app/core/network/supabase/database_client.dart';
@@ -6,8 +7,9 @@ import 'package:blog_app/features/blog/data/models/comment_model.dart';
 
 class CommentDataSourceImpl implements CommentDataSource {
   final DatabaseClient _databaseClient;
+  final AnalyticsService _analyticsService;
 
-  CommentDataSourceImpl(this._databaseClient);
+  CommentDataSourceImpl(this._databaseClient, this._analyticsService);
 
   @override
   Future<CommentModel> addComment({
@@ -23,6 +25,7 @@ class CommentDataSourceImpl implements CommentDataSource {
       });
 
       final commentId = response['id'] as String;
+      await _analyticsService.logCommentAdded(postId: postId);
 
       final commentWithAuthor = await _databaseClient.selectById(
         DBCollection.comments,
