@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:blog_app/core/performance/performance_service.dart';
 import 'package:blog_app/features/blog/domain/entities/post_entity.dart';
 import 'package:blog_app/features/blog/domain/repositories/post_query_repository.dart';
 import 'package:blog_app/features/blog/presentation/bloc/post_query/post_query_event.dart';
@@ -8,6 +9,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 class PostQueryBloc extends Bloc<PostQueryEvent, PostQueryState> {
   final PostQueryRepository postQueryRepository;
+  final PerformanceService performanceService;
 
   static const int _pageSize = 10;
   List<PostEntity> _allPosts = [];
@@ -16,7 +18,7 @@ class PostQueryBloc extends Bloc<PostQueryEvent, PostQueryState> {
   StreamSubscription? _newPost;
   bool _isLoadingMore = false;
 
-  PostQueryBloc({required this.postQueryRepository}) : super(PostQueryInitial()) {
+  PostQueryBloc({required this.postQueryRepository, required this.performanceService}) : super(PostQueryInitial()) {
     on<GetPostsEvent>(_onGetPosts);
     on<LoadMorePostsEvent>(_onLoadMorePosts);
     on<GetMyPostsEvent>(_onGetMyPosts);
@@ -29,7 +31,12 @@ class PostQueryBloc extends Bloc<PostQueryEvent, PostQueryState> {
     emit(PostQueryLoading());
     _allPosts = [];
     _currentCategory = event.category;
-    final result = await postQueryRepository.getPosts(limit: _pageSize, category: _currentCategory);
+    // Home feed (all posts) and a category feed are separate traces, so each gets its own numbers in the console.
+    final result = await performanceService.measure(
+      _currentCategory == null ? 'load_home_feed' : 'load_category_feed',
+      () => postQueryRepository.getPosts(limit: _pageSize, category: _currentCategory),
+      attributes: {if (_currentCategory != null) 'category': _currentCategory!},
+    );
     result.fold((failure) => emit(PostQueryError(failure.message)), (posts) {
       _allPosts = posts;
       emit(PostsLoaded(posts: _allPosts, hasMore: posts.length >= _pageSize));

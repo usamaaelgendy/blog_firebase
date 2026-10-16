@@ -8,6 +8,7 @@ import 'package:blog_app/core/network/supabase/storage_client.dart';
 import 'package:blog_app/core/network/firebase/firestore_storage_client.dart';
 import 'package:blog_app/core/notifications/local_notification_service.dart';
 import 'package:blog_app/core/notifications/notification_service.dart';
+import 'package:blog_app/core/performance/performance_service.dart';
 import 'package:blog_app/features/auth/data/datasources/email_auth_datasource.dart';
 import 'package:blog_app/features/auth/data/datasources/email_auth_datasource_impl.dart';
 import 'package:blog_app/features/auth/data/datasources/phone_auth_datasource.dart';
@@ -53,6 +54,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:firebase_performance/firebase_performance.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
@@ -65,6 +67,7 @@ Future<void> initDependencies() async {
   // ===== Core =====
   sl.registerSingleton<SharedPreferences>(await SharedPreferences.getInstance());
   sl.registerLazySingleton(() => CrashlyticsService(FirebaseCrashlytics.instance));
+  sl.registerLazySingleton(() => PerformanceService(FirebasePerformance.instance));
   sl.registerLazySingleton<AuthClient>(
     () => FirebaseAuthClient(FirebaseAuth.instance, FirebaseFunctions.instance),
   );
@@ -106,7 +109,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<CommentRepository>(() => CommentRepositoryImpl(commentDataSource: sl()));
 
   // ===== Blog BLoCs =====
-  sl.registerFactory(() => PostCrudBloc(postCrudRepository: sl()));
-  sl.registerFactory(() => PostQueryBloc(postQueryRepository: sl()));
+  sl.registerFactory(() => PostCrudBloc(postCrudRepository: sl(), performanceService: sl()));
+  sl.registerFactory(() => PostQueryBloc(postQueryRepository: sl(), performanceService: sl()));
   sl.registerFactory(() => CommentBloc(commentRepository: sl()));
 }
