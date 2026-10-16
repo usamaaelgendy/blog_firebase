@@ -1,3 +1,4 @@
+import 'package:blog_app/core/crashlytics/crashlytics_service.dart';
 import 'package:blog_app/core/network/auth_client.dart';
 import 'package:blog_app/core/network/firebase/auth_client_impl.dart';
 import 'package:blog_app/core/network/supabase/auth_client_impl.dart';
@@ -50,6 +51,7 @@ import 'package:blog_app/features/blog/presentation/bloc/post_query/post_query_b
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -62,11 +64,12 @@ final sl = GetIt.instance;
 Future<void> initDependencies() async {
   // ===== Core =====
   sl.registerSingleton<SharedPreferences>(await SharedPreferences.getInstance());
+  sl.registerLazySingleton(() => CrashlyticsService(FirebaseCrashlytics.instance));
   sl.registerLazySingleton<AuthClient>(
     () => FirebaseAuthClient(FirebaseAuth.instance, FirebaseFunctions.instance),
   );
   sl.registerLazySingleton<StorageClient>(() => FirestoreStorageClient(FirebaseStorage.instance));
-  sl.registerLazySingleton<DatabaseClient>(() => FirestoreDatabaseClient(FirebaseFirestore.instance, sl()));
+  sl.registerLazySingleton<DatabaseClient>(() => FirestoreDatabaseClient(FirebaseFirestore.instance, sl(), sl()));
   sl.registerLazySingleton(() => LocalNotificationService(FlutterLocalNotificationsPlugin()));
   sl.registerLazySingleton(() => GlobalKey<NavigatorState>());
   sl.registerLazySingleton(() => NotificationService(FirebaseMessaging.instance, sl(), sl(), sl()));

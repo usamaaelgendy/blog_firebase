@@ -1,3 +1,4 @@
+import 'package:blog_app/core/crashlytics/crashlytics_service.dart';
 import 'package:blog_app/core/di/injection_container.dart';
 import 'package:blog_app/core/notifications/notification_service.dart';
 import 'package:blog_app/features/auth/presentation/bloc/profile/profile_bloc.dart';
@@ -6,6 +7,7 @@ import 'package:blog_app/features/auth/presentation/bloc/profile/profile_state.d
 import 'package:blog_app/features/auth/presentation/bloc/session/session_bloc.dart';
 import 'package:blog_app/features/auth/presentation/bloc/session/session_event.dart';
 import 'package:blog_app/features/auth/presentation/bloc/session/session_state.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
@@ -113,6 +115,13 @@ class ProfileView extends StatelessWidget {
                   ),
                   const SizedBox(height: 32),
                   const NewPostNotificationsSwitch(),
+                  // Debug builds only: forces a native crash to check the Crashlytics setup.
+                  if (kDebugMode)
+                    ListTile(
+                      leading: const Icon(Icons.bug_report, color: Colors.orange),
+                      title: const Text('Test Crash'),
+                      onTap: () => sl<CrashlyticsService>().crash(),
+                    ),
                   ListTile(
                     leading: const Icon(Icons.logout, color: Colors.red),
                     title: const Text(

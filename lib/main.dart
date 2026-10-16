@@ -1,3 +1,4 @@
+import 'package:blog_app/core/crashlytics/crashlytics_service.dart';
 import 'package:blog_app/core/di/injection_container.dart';
 import 'package:blog_app/core/notifications/notification_service.dart';
 import 'package:blog_app/core/theme/app_theme.dart';
@@ -35,6 +36,8 @@ void main() async {
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
   await initDependencies();
+
+  sl<CrashlyticsService>().init();
 
   await sl<NotificationService>().init();
 

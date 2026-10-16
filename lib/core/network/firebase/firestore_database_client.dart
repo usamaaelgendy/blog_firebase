@@ -1,4 +1,5 @@
 import 'package:blog_app/core/constants/db_collections.dart';
+import 'package:blog_app/core/crashlytics/crashlytics_service.dart';
 import 'package:blog_app/core/error/exceptions.dart';
 import 'package:blog_app/core/network/auth_client.dart';
 import 'package:blog_app/core/network/supabase/database_client.dart';
@@ -14,6 +15,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class FirestoreDatabaseClient implements DatabaseClient {
   final FirebaseFirestore _firestore;
   final AuthClient _authClient;
+  final CrashlyticsService _crashlytics;
 
   /// Subcollections: `collection -> (parent collection, field in the data that holds the parent id)`.
   /// e.g. `comments` live in `posts/{post_id}/comments`.
@@ -30,7 +32,7 @@ class FirestoreDatabaseClient implements DatabaseClient {
     serverTimestampBehavior: ServerTimestampBehavior.estimate,
   );
 
-  FirestoreDatabaseClient(this._firestore, this._authClient);
+  FirestoreDatabaseClient(this._firestore, this._authClient, this._crashlytics);
 
   @override
   Future<Map<String, dynamic>> insert(String table, Map<String, dynamic> data) {
@@ -284,22 +286,30 @@ class FirestoreDatabaseClient implements DatabaseClient {
     return value;
   }
 
-  /// Converts Firestore errors into the app's [ServerException].
+  /// Records Firestore errors in Crashlytics (non-fatal) and converts them into the app's [ServerException].
   Future<T> _guard<T>(Future<T> Function() action) async {
     try {
       return await action();
-    } on FirebaseException catch (e) {
+    } on FirebaseException catch (e, stack) {
+      _recordError(e, stack);
       throw ServerException(e.message ?? 'Database request failed', e.code);
     }
   }
 
-  /// Converts Firestore stream errors into the app's [ServerException].
+  /// Records Firestore stream errors in Crashlytics (non-fatal) and converts them into the app's [ServerException].
   Stream<T> _guardStream<T>(Stream<T> stream) {
-    return stream.handleError((Object e) {
-      throw ServerException(
-        (e as FirebaseException).message ?? 'Database stream failed',
-        e.code,
-      );
+    return stream.handleError((Object e, StackTrace stack) {
+      _recordError(e as FirebaseException, stack);
+      throw ServerException(e.message ?? 'Database stream failed', e.code);
     }, test: (e) => e is FirebaseException);
+  }
+
+  /// The app handles these errors (they become a [ServerException]), so they are not fatal.
+  void _recordError(FirebaseException e, StackTrace stack) {
+    _crashlytics.recordError(
+      e,
+      stack,
+      reason: 'Firestore error: ${e.code}',
+    );
   }
 }
