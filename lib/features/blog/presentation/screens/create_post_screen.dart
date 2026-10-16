@@ -135,7 +135,7 @@ class _CreatePostViewState extends State<CreatePostView> {
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final image = await picker.pickImage(source: ImageSource.gallery);
+    final image = await picker.pickImage(source: ImageSource.gallery , maxWidth: 1600 , imageQuality: 80);
     if (image != null) {
       setState(() => _imagePath = image.path);
     }

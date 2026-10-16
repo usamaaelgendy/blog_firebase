@@ -17,7 +17,9 @@ class PerformanceService {
     final stopwatch = Stopwatch()..start();
     await trace.start();
     try {
-      return await action();
+      final result = await action();
+      trace.putAttribute('status', 'success');
+      return result;
     } catch (_) {
       trace.putAttribute('status', 'error');
       rethrow;
