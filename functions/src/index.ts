@@ -8,6 +8,7 @@ import * as logger from "firebase-functions/logger";
 import {initializeApp} from "firebase-admin/app";
 import {getAuth} from "firebase-admin/auth";
 import {FieldValue, getFirestore} from "firebase-admin/firestore";
+import {getMessaging} from "firebase-admin/messaging";
 
 initializeApp();
 
@@ -47,5 +48,30 @@ export const onCommentDeleted = onDocumentDeleted(
       .doc(`posts/${postId}`)
       .update({comments_count: FieldValue.increment(-1)});
     logger.info("Decremented comments_count", {postId});
+  }
+);
+
+export const onPostCreated = onDocumentCreated(
+  "posts/{postId}",
+  async (event) => {
+    const post = event.data?.data();
+    if (!post) return;
+
+    const postId = event.params.postId;
+    const authorName = post.author?.name || "Someone";
+
+    // Data keys match NotificationType in the app (lib/core/notifications).
+    await getMessaging().send({
+      topic: "new_post",
+      notification: {
+        title: authorName,
+        body: post.title ?? "",
+      },
+      data: {
+        type: "post",
+        postId,
+      },
+    });
+    logger.info("Sent new_post notification", {postId});
   }
 );
