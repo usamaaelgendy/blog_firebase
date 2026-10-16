@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:blog_app/core/performance/performance_service.dart';
 import 'package:blog_app/features/blog/domain/repositories/post_crud_repository.dart';
 import 'package:blog_app/features/blog/presentation/bloc/post_crud/post_crud_event.dart';
 import 'package:blog_app/features/blog/presentation/bloc/post_crud/post_crud_state.dart';
@@ -8,9 +7,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 class PostCrudBloc extends Bloc<PostCrudEvent, PostCrudState> {
   final PostCrudRepository postCrudRepository;
-  final PerformanceService performanceService;
 
-  PostCrudBloc({required this.postCrudRepository, required this.performanceService}) : super(PostCrudInitial()) {
+  PostCrudBloc({required this.postCrudRepository}) : super(PostCrudInitial()) {
     on<CreatePostEvent>(_onCreatePost);
     on<GetPostByIdEvent>(_onGetPostById);
     on<UpdatePostEvent>(_onUpdatePost);
@@ -22,9 +20,9 @@ class PostCrudBloc extends Bloc<PostCrudEvent, PostCrudState> {
 
     String? imageUrl;
     if (event.imagePath != null) {
-      final uploadResult = await performanceService.measure(
-        'upload_post_image',
-        () => postCrudRepository.uploadPostImage(authorId: event.authorId, filePath: event.imagePath!),
+      final uploadResult = await postCrudRepository.uploadPostImage(
+        authorId: event.authorId,
+        filePath: event.imagePath!,
       );
       final uploaded = uploadResult.fold<String?>((failure) {
         emit(PostCrudError(failure.message));

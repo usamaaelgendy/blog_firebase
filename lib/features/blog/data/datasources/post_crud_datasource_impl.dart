@@ -4,14 +4,16 @@ import 'package:blog_app/core/constants/db_collections.dart';
 import 'package:blog_app/core/error/exceptions.dart';
 import 'package:blog_app/core/network/supabase/database_client.dart';
 import 'package:blog_app/core/network/supabase/storage_client.dart';
+import 'package:blog_app/core/performance/performance_service.dart';
 import 'package:blog_app/features/blog/data/datasources/post_crud_datasource.dart';
 import 'package:blog_app/features/blog/data/models/post_model.dart';
 
 class PostCrudDataSourceImpl implements PostCrudDataSource {
   final DatabaseClient _databaseClient;
   final StorageClient _storageClient;
+  final PerformanceService _performanceService;
 
-  PostCrudDataSourceImpl(this._databaseClient, this._storageClient);
+  PostCrudDataSourceImpl(this._databaseClient, this._storageClient, this._performanceService);
 
   @override
   Future<PostModel> createPost({
@@ -112,11 +114,14 @@ class PostCrudDataSourceImpl implements PostCrudDataSource {
       final fileBytes = await File(filePath).readAsBytes();
       final extension = filePath.split('.').last;
       final storagePath = '$authorId/${DateTime.now().millisecondsSinceEpoch}.$extension';
-      return await _storageClient.uploadFile(
-        bucket: 'post-image',
-        path: storagePath,
-        fileBytes: fileBytes,
-        contentType: 'image/$extension',
+      return await _performanceService.measure(
+        'upload_post_image',
+        () => _storageClient.uploadFile(
+          bucket: 'post-image',
+          path: storagePath,
+          fileBytes: fileBytes,
+          contentType: 'image/$extension',
+        ),
       );
     } on ServerException {
       rethrow;

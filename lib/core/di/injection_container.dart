@@ -99,8 +99,8 @@ Future<void> initDependencies() async {
   sl.registerFactory(() => ProfileBloc(profileRepository: sl()));
 
   // ===== Blog DataSources =====
-  sl.registerLazySingleton<PostCrudDataSource>(() => PostCrudDataSourceImpl(sl(), sl()));
-  sl.registerLazySingleton<PostQueryDataSource>(() => PostQueryDataSourceImpl(sl()));
+  sl.registerLazySingleton<PostCrudDataSource>(() => PostCrudDataSourceImpl(sl(), sl(), sl()));
+  sl.registerLazySingleton<PostQueryDataSource>(() => PostQueryDataSourceImpl(sl(), sl()));
   sl.registerLazySingleton<CommentDataSource>(() => CommentDataSourceImpl(sl()));
 
   // ===== Blog Repositories =====
@@ -109,7 +109,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<CommentRepository>(() => CommentRepositoryImpl(commentDataSource: sl()));
 
   // ===== Blog BLoCs =====
-  sl.registerFactory(() => PostCrudBloc(postCrudRepository: sl(), performanceService: sl()));
-  sl.registerFactory(() => PostQueryBloc(postQueryRepository: sl(), performanceService: sl()));
+  sl.registerFactory(() => PostCrudBloc(postCrudRepository: sl()));
+  sl.registerFactory(() => PostQueryBloc(postQueryRepository: sl()));
   sl.registerFactory(() => CommentBloc(commentRepository: sl()));
 }
