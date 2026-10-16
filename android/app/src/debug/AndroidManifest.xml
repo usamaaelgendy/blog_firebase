@@ -4,4 +4,11 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+
+    <application>
+        <!-- Debug builds only: print Firebase Performance traces to logcat (filter by "FirebasePerformance"). -->
+        <meta-data
+            android:name="firebase_performance_logcat_enabled"
+            android:value="true" />
+    </application>
 </manifest>
